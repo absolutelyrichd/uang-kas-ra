@@ -497,6 +497,22 @@
                         <!-- Options will be populated by JavaScript -->
                     </select>
                 </div>
+                <!-- ADDED: Fields for editing multi-month payment -->
+                <div class="md:col-span-2">
+                    <label for="editPaymentPeriodStartMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Mulai)</label>
+                    <select id="editPaymentPeriodStartMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        <option value="">Pilih Bulan (Opsional)</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="editPaymentPeriodEndMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Akhir)</label>
+                    <select id="editPaymentPeriodEndMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        <option value="">Pilih Bulan (Opsional)</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <!-- End added fields -->
                 <div class="md:col-span-2 flex justify-end space-x-4">
                      <button type="button" id="cancelEditTransaction" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Batal</button>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
@@ -1239,27 +1255,28 @@
             function populatePaymentPeriodDropdowns() {
                 const startMonthSelect = document.getElementById('paymentPeriodStartMonth');
                 const endMonthSelect = document.getElementById('paymentPeriodEndMonth');
+                const editStartMonthSelect = document.getElementById('editPaymentPeriodStartMonth');
+                const editEndMonthSelect = document.getElementById('editPaymentPeriodEndMonth');
 
-                startMonthSelect.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
-                endMonthSelect.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
+                const selects = [startMonthSelect, endMonthSelect, editStartMonthSelect, editEndMonthSelect];
+
+                selects.forEach(select => {
+                    if (select) {
+                        select.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
+                        paymentMonths.forEach(monthYear => {
+                            const option = document.createElement('option');
+                            option.value = monthYear;
+                            option.textContent = monthYear;
+                            select.appendChild(option);
+                        });
+                    }
+                });
                 
                 const currentMonth = months[new Date().getMonth()];
                 const currentYear = new Date().getFullYear();
                 const currentMonthYear = `${currentMonth} ${currentYear}`;
 
-                paymentMonths.forEach(monthYear => {
-                    const optionStart = document.createElement('option');
-                    optionStart.value = monthYear;
-                    optionStart.textContent = monthYear;
-                    startMonthSelect.appendChild(optionStart);
-
-                    const optionEnd = document.createElement('option');
-                    optionEnd.value = monthYear;
-                    optionEnd.textContent = monthYear;
-                    endMonthSelect.appendChild(optionEnd);
-                });
-
-                // Set default to current month for both
+                // Set default for ADD modal
                 startMonthSelect.value = currentMonthYear;
                 endMonthSelect.value = currentMonthYear;
             }
@@ -1360,14 +1377,30 @@
                 document.getElementById('editTransactionDesc').value = transaction.keterangan;
                 
                 const isIncome = transaction.pemasukan > 0;
-                const amount = isIncome ? transaction.pemasukan : transaction.pengeluaran;
                 
-                document.getElementById('editTransactionAmount').value = amount;
+                // For multi-month payments, the stored amount is the total. We need to show the per-month amount.
+                let amountToShow = isIncome ? transaction.pemasukan : transaction.pengeluaran;
+                if (isIncome && transaction.startMonth && transaction.endMonth) {
+                    const startIndex = paymentMonths.indexOf(transaction.startMonth);
+                    const endIndex = paymentMonths.indexOf(transaction.endMonth);
+                    if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+                        const numberOfMonths = endIndex - startIndex + 1;
+                        if (numberOfMonths > 0) {
+                            amountToShow = transaction.pemasukan / numberOfMonths;
+                        }
+                    }
+                }
+
+                document.getElementById('editTransactionAmount').value = amountToShow;
                 document.querySelector(`input[name="editTransactionType"][value="pemasukan"]`).checked = isIncome;
                 document.querySelector(`input[name="editTransactionType"][value="pengeluaran"]`).checked = !isIncome;
                 
                 populateTransactionWhoDropdowns(isIncome ? 'pemasukan' : 'pengeluaran');
                 document.getElementById('editTransactionWho').value = transaction.penyetorPengambil || '';
+
+                // Populate and set payment period dropdowns
+                document.getElementById('editPaymentPeriodStartMonth').value = transaction.startMonth || '';
+                document.getElementById('editPaymentPeriodEndMonth').value = transaction.endMonth || '';
                 
                 openModal('editTransactionModal');
             }
@@ -1467,19 +1500,36 @@
                 const docId = document.getElementById('editTransactionId').value;
                 const date = document.getElementById('editTransactionDate').value;
                 const desc = document.getElementById('editTransactionDesc').value;
-                const amount = parseFloat(document.getElementById('editTransactionAmount').value);
+                let amount = parseFloat(document.getElementById('editTransactionAmount').value); // This is per-month amount
                 const type = document.querySelector('input[name="editTransactionType"]:checked').value;
                 const who = document.getElementById('editTransactionWho').value;
+                const startMonth = document.getElementById('editPaymentPeriodStartMonth').value;
+                const endMonth = document.getElementById('editPaymentPeriodEndMonth').value;
 
-                // For simplicity, editing does not support multi-month payments for now.
-                // It will update a single transaction record.
+                let actualAmount = amount; // This will be the total amount saved
+
+                if (type === 'pemasukan' && startMonth && endMonth) {
+                    const startIndex = paymentMonths.indexOf(startMonth);
+                    const endIndex = paymentMonths.indexOf(endMonth);
+                    if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+                        const numberOfMonths = endIndex - startIndex + 1;
+                        actualAmount = amount * numberOfMonths; // Recalculate total amount
+                    }
+                }
+
                 const updatedTransaction = {
                     tanggal: date,
                     keterangan: desc,
-                    pemasukan: type === 'pemasukan' ? amount : 0,
-                    pengeluaran: type === 'pengeluaran' ? amount : 0,
+                    pemasukan: type === 'pemasukan' ? actualAmount : 0,
+                    pengeluaran: type === 'pengeluaran' ? amount : 0, // Pengeluaran is not per-month
                     penyetorPengambil: who || 'Anonim'
                 };
+
+                // Add startMonth and endMonth only if it's an income transaction and both are selected
+                if (type === 'pemasukan' && startMonth && endMonth) {
+                    updatedTransaction.startMonth = startMonth;
+                    updatedTransaction.endMonth = endMonth;
+                }
                 
                 const spinner = document.getElementById('editTransactionSpinner');
                 spinner.classList.remove('hidden');
