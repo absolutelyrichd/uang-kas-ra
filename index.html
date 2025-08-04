@@ -519,11 +519,7 @@
             let currentPage = 1;
             const transactionsPerPage = 10;
 
-            // REVISED: Define the calculation period from July 2025 to July 2026
-            const months = [
-                'Juli 2025', 'Agustus 2025', 'September 2025', 'Oktober 2025', 'November 2025', 'Desember 2025',
-                'Januari 2026', 'Februari 2026', 'Maret 2026', 'April 2026', 'Mei 2026', 'Juni 2026', 'Juli 2026'
-            ];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
             const formatCurrency = (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
 
@@ -797,7 +793,6 @@
                 populateTransactionWhoDropdowns(); // Populate dropdowns for both add and edit modals
                 populatePaymentPeriodDropdowns(); // Populate new payment period dropdowns
                 populatePdfMonthCheckboxes(); // Ensure PDF month checkboxes are populated
-                populateAiMonthFilter(); // NEW: Populate AI month filter
             }
 
             function calculateKPIs() {
@@ -877,21 +872,14 @@
                 const ctx = document.getElementById('monthlyComparisonChart').getContext('2d');
                 const monthlyData = {};
 
-                // REVISED: Initialize monthlyData with all months from the period to ensure correct order
-                months.forEach(month => {
-                    monthlyData[month] = { pemasukan: 0, pengeluaran: 0 };
-                });
-
                 cashflowData.forEach(item => {
-                    const date = new Date(item.tanggal);
-                    // Create a key like "Juli 2025"
-                    const monthName = date.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-                    
-                    // Only include data that falls within our defined period
-                    if (monthlyData.hasOwnProperty(monthName)) {
-                        monthlyData[monthName].pemasukan += item.pemasukan;
-                        monthlyData[monthName].pengeluaran += item.pengeluaran;
+                    const monthIndex = new Date(item.tanggal).getMonth();
+                    const monthName = months[monthIndex];
+                    if (!monthlyData[monthName]) {
+                        monthlyData[monthName] = { pemasukan: 0, pengeluaran: 0 };
                     }
+                    monthlyData[monthName].pemasukan += item.pemasukan;
+                    monthlyData[monthName].pengeluaran += item.pengeluaran;
                 });
 
                 const chartLabels = Object.keys(monthlyData);
@@ -1106,8 +1094,9 @@
 
             // New function to automatically update payment status based on cashflow data
             function updateAllPaymentStatuses() {
-                // Reset all payment statuses to 'Belum'
+                // Reset all payment statuses to 'Belum' initially for all members for all months
                 paymentData.forEach(member => {
+                    // Only reset for non-system users
                     if (!member.isSystem) {
                         member.pembayaran = {}; // Clear old payments
                         months.forEach(month => {
@@ -1116,15 +1105,16 @@
                     }
                 });
 
-                // Iterate through cashflow data to find payments
+                // Iterate through cashflow data to find payments from registered members
                 cashflowData.forEach(transaction => {
+                    // Only consider income transactions
                     if (transaction.pemasukan > 0) {
                         const payerName = transaction.penyetorPengambil ? transaction.penyetorPengambil.toLowerCase() : '';
-                        const member = paymentData.find(m => m.nama.toLowerCase() === payerName && !m.isSystem);
+                        const member = paymentData.find(m => m.nama.toLowerCase() === payerName && !m.isSystem); // Exclude system users
 
                         if (member) {
                             if (transaction.startMonth && transaction.endMonth) {
-                                // This part should be fine as it uses indexOf on the new `months` array
+                                // Handle multi-month payment
                                 const startIndex = months.indexOf(transaction.startMonth);
                                 const endIndex = months.indexOf(transaction.endMonth);
 
@@ -1132,16 +1122,17 @@
                                     for (let i = startIndex; i <= endIndex; i++) {
                                         member.pembayaran[months[i]] = 'Lunas';
                                     }
+                                } else {
+                                    // Fallback if start/end months are invalid, use transaction month
+                                    const transactionDate = new Date(transaction.tanggal);
+                                    const transactionMonthName = months[transactionDate.getMonth()];
+                                    member.pembayaran[transactionMonthName] = 'Lunas';
                                 }
                             } else {
-                                // REVISED: Logic for single-month payments
+                                // Original single-month payment logic
                                 const transactionDate = new Date(transaction.tanggal);
-                                // Format it to "Month YYYY" to match the `months` array
-                                const transactionMonthName = transactionDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-                                // Check if this month is part of our tracked period
-                                if (months.includes(transactionMonthName)) {
-                                     member.pembayaran[transactionMonthName] = 'Lunas';
-                                }
+                                const transactionMonthName = months[transactionDate.getMonth()];
+                                member.pembayaran[transactionMonthName] = 'Lunas';
                             }
                         }
                     }
@@ -1224,8 +1215,7 @@
                 startMonthSelect.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
                 endMonthSelect.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
 
-                // REVISED: The new default is the first month of the period
-                const defaultMonth = months[0]; // "Juli 2025"
+                const currentMonthName = months[new Date().getMonth()];
 
                 months.forEach(month => {
                     const optionStart = document.createElement('option');
@@ -1239,27 +1229,10 @@
                     endMonthSelect.appendChild(optionEnd);
                 });
 
-                // Set default to the first month of the period
-                startMonthSelect.value = defaultMonth;
-                endMonthSelect.value = defaultMonth;
+                // Set default to current month for both
+                startMonthSelect.value = currentMonthName;
+                endMonthSelect.value = currentMonthName;
             }
-
-            // NEW: Function to populate the AI month filter dropdown
-            function populateAiMonthFilter() {
-                const aiMonthFilter = document.getElementById('aiMonthFilter');
-                aiMonthFilter.innerHTML = ''; // Clear existing options
-                months.forEach(month => {
-                    const option = document.createElement('option');
-                    option.value = month;
-                    option.textContent = month;
-                    aiMonthFilter.appendChild(option);
-                });
-                // Set a default value, e.g., the first month
-                if (months.length > 0) {
-                    aiMonthFilter.value = months[0];
-                }
-            }
-
 
             // --- MODAL LOGIC ---
             
@@ -1798,10 +1771,9 @@
             // AI Features Logic
             document.getElementById('generateSpendingAnalysis').addEventListener('click', async () => {
                 const selectedMonth = document.getElementById('aiMonthFilter').value;
-                const filteredExpenses = cashflowData.filter(item => {
-                    const itemMonth = new Date(item.tanggal).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-                    return itemMonth === selectedMonth && item.pengeluaran > 0;
-                });
+                const filteredExpenses = cashflowData.filter(item =>
+                    new Date(item.tanggal).getMonth() === months.indexOf(selectedMonth) && item.pengeluaran > 0
+                );
 
                 let expenseDetails = filteredExpenses.map(item =>
                     `- ${item.keterangan} (${item.penyetorPengambil || 'Anonim'}): ${formatCurrency(item.pengeluaran)}`
