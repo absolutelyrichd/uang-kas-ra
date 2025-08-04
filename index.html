@@ -447,6 +447,7 @@
         let db;
         let auth;
         let userId;
+        let isAuthReady = false;
 
         // Data arrays for transactions and members
         let transactions = [];
@@ -543,9 +544,10 @@
                 console.log("Firebase initialized successfully.");
 
                 auth.onAuthStateChanged(async (user) => {
+                    isAuthReady = true;
                     if (user) {
                         userId = user.uid;
-                        authStatus.textContent = 'Terautentikasi: ' + (user.displayName || user.email);
+                        authStatus.textContent = 'Terautentikasi: ' + (user.displayName || user.email || 'Pengguna Anonim');
                         signInButton.classList.add('hidden');
                         signOutButton.classList.remove('hidden');
                         appContent.classList.remove('hidden');
@@ -564,23 +566,39 @@
                         members = [];
                         paymentStatuses = {};
                         renderAllUI();
-                        // Sign in anonymously
+                        // Sign in anonymously if initial token is not provided
                         if (typeof __initial_auth_token !== 'undefined') {
-                            await auth.signInWithCustomToken(__initial_auth_token);
+                            authStatus.textContent = 'Autentikasi dengan token kustom...';
+                            try {
+                                await auth.signInWithCustomToken(__initial_auth_token);
+                            } catch (error) {
+                                console.error("Error signing in with custom token:", error);
+                                authStatus.textContent = 'Gagal autentikasi dengan token. Menunggu login.';
+                            }
                         } else {
-                            await auth.signInAnonymously();
+                            authStatus.textContent = 'Autentikasi anonim...';
+                            try {
+                                await auth.signInAnonymously();
+                            } catch (error) {
+                                console.error("Error signing in anonymously:", error);
+                                authStatus.textContent = 'Gagal autentikasi anonim. Menunggu login.';
+                            }
                         }
                     }
                 });
 
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
+                authStatus.textContent = 'Gagal memuat: Periksa konfigurasi Firebase.';
             }
         }
 
         // Setup Real-time Firestore Listeners
         function setupFirestoreListeners() {
-            if (!userId) return;
+            if (!userId) {
+                console.warn("Cannot set up Firestore listeners: userId is not available.");
+                return;
+            }
 
             const transactionsPath = `artifacts/${appId}/users/${userId}/transactions`;
             const membersPath = `artifacts/${appId}/users/${userId}/members`;
@@ -616,6 +634,10 @@
         //----------------------------------------------------------------------
 
         function renderAllUI() {
+            if (!isAuthReady) {
+                 console.log("Authentication not ready, skipping UI render.");
+                 return;
+            }
             renderKPIs();
             renderCharts();
             renderTransactionsTable();
