@@ -12,6 +12,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals (Slate, Stone, Amber, with Emerald/Red for status) -->
+    <!-- Application Structure Plan: A dashboard-style layout is chosen for optimal usability. It starts with high-level Key Performance Indicators (KPIs) like current balance for a quick overview. This is followed by visual charts (cashflow trend, income vs. expense) to provide deeper context and show performance over time. Finally, a tabbed section offers detailed, granular data (transaction history and payment status) without cluttering the main view. A new section for AI-powered insights has1 been added, allowing users to generate spending analyses and payment reminder drafts using the Gemini API, further enhancing data utility and task automation. New sections for member management and detailed transaction input are added, along with global save/delete options, all powered by Firebase persistence with Google login. -->
+    <!-- Visualization & Content Choices:
+        - Report Info: Final Saldo -> Goal: Inform -> Viz: KPI Card -> Interaction: None -> Justification: Most critical metric, needs immediate visibility -> Library/Method: HTML/Tailwind.
+        - Report Info: Saldo over time -> Goal: Change -> Viz: Line Chart -> Interaction: Hover for tooltip -> Justification: Clearly shows financial health trend -> Library/Method: Chart.js (Canvas).
+        - Report Info: Monthly Pemasukan vs. Pengeluaran -> Goal: Compare -> Viz: Bar Chart -> Interaction: Hover for tooltip -> Justification: Easy comparison of monthly financial activity -> Library/Method: Chart.js (Canvas).
+        - Report Info: Cashflow log -> Goal: Organize -> Viz: Table -> Interaction: Search, Delete Transaction -> Justification: Allows users to find and manage specific transactions easily -> Library/Method: HTML/Tailwind + JS.
+        - Report Info: Member payment status -> Goal: Organize/Compare -> Viz: Table/Grid -> Interaction: Filter by month, Add/Delete Member, **Automatic Payment Status Update based on payer and income transaction** -> Justification: Quick visual check of who has paid, with color-coding for clarity, and full member management, now automated for accuracy with improved input and simplified payment logic -> Library/Method: HTML/Tailwind + JS.
+        - Report Info: Spending patterns from cashflow -> Goal: Inform/Analyze -> Viz: AI-generated text summary -> Interaction: Button click with month selection -> Justification: Provides qualitative insights into spending habits beyond raw numbers -> Library/Method: Gemini API (LLM).
+        - Report Info: Unpaid members -> Goal: Act/Communicate -> Viz: AI-generated text draft -> Interaction: Button click -> Justification: Automates the creation of polite payment reminders, saving time -> Library/Method: Gemini API (LLM).
+        - Report Info: All data persistence -> Goal: Store/Retrieve -> Viz: None -> Interaction: Download JSON, Upload JSON, Clear In-memory Data -> Justification: Essential for long-term data management and portability, now primarily via Firebase. -> Library/Method: Firebase Firestore + File (JSON) via JS Blob/FileReader.
+        - Report Info: Detailed Transaction Input -> Goal: Record -> Viz: Form -> Interaction: Input fields, radio buttons, submit button, Payer dropdown -> Justification: Allows granular entry of financial activities with standardized payer selection -> Library/Method: HTML/Tailwind + JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -50,7 +63,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -67,11 +79,12 @@
         .modal-content {
             background-color: #fefefe;
             margin: auto;
-            padding: 24px;
+            padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            width: 90%;
-            max-width: 600px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
         }
         .close-button {
             color: #aaa;
@@ -158,6 +171,7 @@
                             <button id="tab-payments" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
                                 Status Pembayaran Anggota
                             </button>
+                            <!-- Tab 'Input Transaksi Baru' has been removed and replaced with a button -->
                             <button id="tab-member-management" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
                                 Kelola Anggota
                             </button>
@@ -166,39 +180,33 @@
 
                     <div id="content-transactions" class="p-4 md:p-6">
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold text-slate-900">Detail Semua Transaksi</h3>
-                            <button id="openNewTransactionModal" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
-                                + Tambah Transaksi
-                            </button>
-                        </div>
-                        <p class="text-sm text-slate-500 mb-4">Gunakan kolom pencarian dan filter untuk menemukan transaksi spesifik.</p>
-                        <!-- Filter and Search Section -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div>
-                                <label for="filterDateStart" class="block text-sm font-medium text-slate-700">Tanggal Mulai</label>
-                                <input type="date" id="filterDateStart" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                            </div>
-                            <div>
-                                <label for="filterDateEnd" class="block text-sm font-medium text-slate-700">Tanggal Selesai</label>
-                                <input type="date" id="filterDateEnd" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                            </div>
-                            <div>
-                                <label for="filterTransactionType" class="block text-sm font-medium text-slate-700">Jenis Transaksi</label>
-                                <select id="filterTransactionType" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                                    <option value="all">Semua</option>
-                                    <option value="pemasukan">Pemasukan</option>
-                                    <option value="pengeluaran">Pengeluaran</option>
-                                </select>
+                            <div class="flex flex-col sm:flex-row gap-2 items-center w-full">
+                                <h3 class="text-lg font-semibold text-slate-900 mr-auto">Detail Semua Transaksi</h3>
+                                <div class="flex-grow">
+                                    <label for="transactionYearFilter" class="sr-only">Filter Tahun</label>
+                                    <select id="transactionYearFilter" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400"></select>
+                                </div>
+                                <div class="flex-grow">
+                                    <label for="transactionMonthFilter" class="sr-only">Filter Bulan</label>
+                                    <select id="transactionMonthFilter" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400"></select>
+                                </div>
+                                <div class="flex-grow">
+                                    <label for="transactionSearch" class="sr-only">Cari transaksi</label>
+                                    <input type="text" id="transactionSearch" placeholder="Cari transaksi..." class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+                                </div>
+                                <button id="addTransactionButton" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex-shrink-0">
+                                    Tambah Transaksi Baru
+                                </button>
                             </div>
                         </div>
-                        <input type="text" id="transactionSearch" placeholder="Cari transaksi berdasarkan keterangan..." class="w-full max-w-sm mb-4 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
-                        
+
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-slate-200">
                                 <thead class="bg-slate-50">
                                     <tr>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tanggal</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Keterangan</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Anggota</th>
                                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Pemasukan</th>
                                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Pengeluaran</th>
                                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
@@ -229,6 +237,7 @@
                         </div>
                     </div>
 
+                    <!-- 'Input Transaksi Baru' tab content has been moved to a modal -->
                     <div id="content-member-management" class="hidden p-4 md:p-6">
                         <h3 class="text-lg font-semibold mb-1 text-slate-900">Kelola Anggota</h3>
                         <p class="text-sm text-slate-500 mb-4">Tambahkan, edit, atau hapus anggota yang akan membayar uang kas.</p>
@@ -255,743 +264,731 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Section: AI Insights & Assistance -->
+            <section id="ai-insights" class="hidden">
+                <!-- This section is hidden as requested -->
+            </section>
+
+            <!-- Modal for Transaction Input -->
+            <div id="transactionModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-button" id="closeTransactionModal">&times;</span>
+                    <h3 id="modalTitle" class="text-2xl font-bold mb-4 text-slate-900">Input Transaksi Baru</h3>
+                    <p class="text-sm text-slate-500 mb-4">Masukkan detail transaksi pemasukan atau pengeluaran baru.</p>
+                    <form id="transactionForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="hidden" id="transactionId">
+                        <div>
+                            <label for="transactionDate" class="block text-sm font-medium text-slate-700 text-left">Tanggal</label>
+                            <input type="date" id="transactionDate" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
+                        </div>
+                        <div>
+                            <label for="transactionDesc" class="block text-sm font-medium text-slate-700 text-left">Keterangan</label>
+                            <input type="text" id="transactionDesc" placeholder="Contoh: Pembelian buku kas" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
+                        </div>
+                        <div>
+                            <label for="transactionAmount" class="block text-sm font-medium text-slate-700 text-left">Nominal (Rp)</label>
+                            <input type="number" id="transactionAmount" placeholder="Contoh: 50000" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required min="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 text-left">Jenis Transaksi</label>
+                            <div class="mt-1 flex items-center space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="transactionType" value="pemasukan" class="form-radio text-emerald-600" checked>
+                                    <span class="ml-2 text-slate-700">Pemasukan</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="transactionType" value="pengeluaran" class="form-radio text-red-600">
+                                    <span class="ml-2 text-slate-700">Pengeluaran</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="transactionWho" class="block text-sm font-medium text-slate-700 text-left">Penyetor / Pengambil</label>
+                            <select id="transactionWho" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                                <option value="">Pilih Anggota (Opsional)</option>
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        <!-- New fields for multi-month payment -->
+                        <div class="md:col-span-2">
+                            <label for="paymentPeriodStartMonth" class="block text-sm font-medium text-slate-700 text-left">Pembayaran Untuk Bulan (Mulai)</label>
+                            <select id="paymentPeriodStartMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                                <option value="">Pilih Bulan (Opsional)</option>
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="paymentPeriodEndMonth" class="block text-sm font-medium text-slate-700 text-left">Pembayaran Untuk Bulan (Akhir)</label>
+                            <select id="paymentPeriodEndMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                                <option value="">Pilih Bulan (Opsional)</option>
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        <!-- End new fields -->
+                        <div class="md:col-span-2 flex justify-end">
+                            <button type="submit" id="submitTransactionButton" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
+                                Tambah Transaksi
+                                <span id="addTransactionSpinner" class="loading-spinner hidden"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- The Modal for Add/Edit Transaction -->
-    <div id="transactionModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h3 id="modalTitle" class="text-xl font-semibold mb-4 text-slate-900">Input Transaksi Baru</h3>
-            <form id="transactionForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="hidden" id="transactionId" value="">
-                <div>
-                    <label for="transactionDate" class="block text-sm font-medium text-slate-700">Tanggal</label>
-                    <input type="date" id="transactionDate" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
-                </div>
-                <div>
-                    <label for="transactionDesc" class="block text-sm font-medium text-slate-700">Keterangan</label>
-                    <input type="text" id="transactionDesc" placeholder="Contoh: Pembelian buku kas" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
-                </div>
-                <div>
-                    <label for="transactionAmount" class="block text-sm font-medium text-slate-700">Nominal (Rp)</label>
-                    <input type="number" id="transactionAmount" placeholder="Contoh: 50000" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required min="0">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Jenis Transaksi</label>
-                    <div class="mt-1 flex items-center space-x-4">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="transactionType" value="pemasukan" class="form-radio text-emerald-600" checked>
-                            <span class="ml-2 text-slate-700">Pemasukan</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="transactionType" value="pengeluaran" class="form-radio text-red-600">
-                            <span class="ml-2 text-slate-700">Pengeluaran</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="md:col-span-2">
-                    <label for="transactionWho" class="block text-sm font-medium text-slate-700">Penyetor / Pengambil</label>
-                    <select id="transactionWho" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                        <option value="">Pilih Anggota (Opsional)</option>
-                        <!-- Options will be populated by JavaScript -->
-                    </select>
-                </div>
-                <!-- New fields for multi-month payment -->
-                <div class="md:col-span-2">
-                    <label for="paymentPeriodStartMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Mulai)</label>
-                    <select id="paymentPeriodStartMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                        <option value="">Pilih Bulan (Opsional)</option>
-                        <!-- Options will be populated by JavaScript -->
-                    </select>
-                </div>
-                <div class="md:col-span-2">
-                    <label for="paymentPeriodEndMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Akhir)</label>
-                    <select id="paymentPeriodEndMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                        <option value="">Pilih Bulan (Opsional)</option>
-                        <!-- Options will be populated by JavaScript -->
-                    </select>
-                </div>
-                <!-- End new fields -->
-                <div class="md:col-span-2 flex justify-end gap-2">
-                    <button type="submit" id="saveTransactionButton" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
-                        Simpan Transaksi
-                        <span id="saveTransactionSpinner" class="loading-spinner hidden"></span>
-                    </button>
-                    <button type="button" id="deleteTransactionButton" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center hidden">
-                        Hapus Transaksi
-                        <span id="deleteTransactionSpinner" class="loading-spinner hidden"></span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- The Modal for confirmation dialog -->
-    <div id="confirmationModal" class="modal">
-        <div class="modal-content text-center">
-            <h3 class="text-xl font-semibold mb-4 text-slate-900">Konfirmasi Hapus</h3>
-            <p class="text-slate-700 mb-6">Apakah Anda yakin ingin menghapus transaksi ini?</p>
-            <div class="flex justify-center gap-4">
-                <button id="confirmDeleteButton" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Ya, Hapus</button>
-                <button id="cancelDeleteButton" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Batal</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- JavaScript logic -->
+    <!-- The Javascript is located here to ensure the DOM is loaded before execution -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Firebase setup and authentication
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Global variables for Firebase and App data
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-            if (Object.keys(firebaseConfig).length > 0) {
-                const app = firebase.initializeApp(firebaseConfig);
-                const db = firebase.firestore();
-                const auth = firebase.auth();
-                
-                // Get references to UI elements
-                const authStatus = document.getElementById('authStatus');
-                const signInButton = document.getElementById('signInButton');
-                const signOutButton = document.getElementById('signOutButton');
-                const appContent = document.getElementById('appContent');
-                const userIdDiv = document.getElementById('userIdDisplay'); // This is new, for showing the user ID
-                
-                // Global data stores
-                let transactions = [];
-                let members = [];
-                let currentUserId = null;
-                let currentTransactionToEdit = null;
+        // Firebase-related variables
+        let app, db, auth;
+        let userId;
 
-                // Tab management
-                const tabButtons = document.querySelectorAll('.tab-button');
-                const tabContents = {
-                    'tab-transactions': document.getElementById('content-transactions'),
-                    'tab-payments': document.getElementById('content-payments'),
-                    'tab-member-management': document.getElementById('content-member-management')
-                };
-                
-                // Modal management
-                const transactionModal = document.getElementById('transactionModal');
-                const confirmationModal = document.getElementById('confirmationModal');
-                const openNewTransactionModalButton = document.getElementById('openNewTransactionModal');
-                const closeModalButtons = document.querySelectorAll('.close-button');
-                const saveTransactionButton = document.getElementById('saveTransactionButton');
-                const deleteTransactionButton = document.getElementById('deleteTransactionButton');
-                const confirmDeleteButton = document.getElementById('confirmDeleteButton');
-                const cancelDeleteButton = document.getElementById('cancelDeleteButton');
+        // App State Variables
+        let members = [];
+        let transactions = [];
+        let payments = {};
+        let monthlyChartInstance, cashflowChartInstance;
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-                // Transaction Form elements
-                const transactionForm = document.getElementById('transactionForm');
-                const transactionIdInput = document.getElementById('transactionId');
-                const transactionDateInput = document.getElementById('transactionDate');
-                const transactionDescInput = document.getElementById('transactionDesc');
-                const transactionAmountInput = document.getElementById('transactionAmount');
-                const transactionWhoSelect = document.getElementById('transactionWho');
-                const transactionTypeRadios = document.querySelectorAll('input[name="transactionType"]');
-                const paymentPeriodStartMonthSelect = document.getElementById('paymentPeriodStartMonth');
-                const paymentPeriodEndMonthSelect = document.getElementById('paymentPeriodEndMonth');
-                
-                // Search and Filter elements
-                const transactionSearchInput = document.getElementById('transactionSearch');
-                const filterDateStartInput = document.getElementById('filterDateStart');
-                const filterDateEndInput = document.getElementById('filterDateEnd');
-                const filterTransactionTypeSelect = document.getElementById('filterTransactionType');
+        // DOM elements
+        const appContent = document.getElementById('appContent');
+        const authStatus = document.getElementById('authStatus');
+        const signInButton = document.getElementById('signInButton');
+        const signOutButton = document.getElementById('signOutButton');
+        const currentBalanceEl = document.getElementById('currentBalance');
+        const totalIncomeEl = document.getElementById('totalIncome');
+        const totalExpenseEl = document.getElementById('totalExpense');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('[id^="content-"]');
+        const transactionTableBody = document.getElementById('transactionTableBody');
+        const paymentTableBody = document.getElementById('paymentTableBody');
+        const paymentTableHeader = document.getElementById('paymentTableHeader');
+        const memberTableBody = document.getElementById('memberTableBody');
+        const newMemberNameInput = document.getElementById('newMemberName');
+        const addMemberButton = document.getElementById('addMemberButton');
+        const addMemberSpinner = document.getElementById('addMemberSpinner');
+        const transactionModal = document.getElementById('transactionModal');
+        const addTransactionButton = document.getElementById('addTransactionButton');
+        const closeTransactionModal = document.getElementById('closeTransactionModal');
+        const transactionForm = document.getElementById('transactionForm');
+        const submitTransactionButton = document.getElementById('submitTransactionButton');
+        const addTransactionSpinner = document.getElementById('addTransactionSpinner');
+        const transactionIdInput = document.getElementById('transactionId');
+        const modalTitle = document.getElementById('modalTitle');
+        const transactionSearchInput = document.getElementById('transactionSearch');
+        const transactionMonthFilter = document.getElementById('transactionMonthFilter');
+        const transactionYearFilter = document.getElementById('transactionYearFilter');
+        const transactionDateInput = document.getElementById('transactionDate');
+        const transactionDescInput = document.getElementById('transactionDesc');
+        const transactionAmountInput = document.getElementById('transactionAmount');
+        const transactionTypeInputs = document.querySelectorAll('input[name="transactionType"]');
+        const transactionWhoSelect = document.getElementById('transactionWho');
+        const paymentPeriodStartMonth = document.getElementById('paymentPeriodStartMonth');
+        const paymentPeriodEndMonth = document.getElementById('paymentPeriodEndMonth');
+        const insightSection = document.getElementById('ai-insights');
 
-                // Utility functions
-                const formatRupiah = (number) => {
-                    return new Intl.NumberFormat('id-ID', {
-                        style: 'currency',
-                        currency: 'IDR',
-                        minimumFractionDigits: 0
-                    }).format(number);
-                };
 
-                const formatDate = (dateString) => {
-                    if (!dateString) return '';
-                    const date = new Date(dateString);
-                    return date.toLocaleDateString('id-ID', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric'
-                    });
-                };
-                
-                const getMonthName = (monthIndex) => {
-                    const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-                    return months[monthIndex];
-                };
+        // Initialization of Firebase and Auth
+        async function initializeFirebase() {
+            try {
+                if (firebase.apps.length === 0) {
+                    app = firebase.initializeApp(firebaseConfig);
+                } else {
+                    app = firebase.app();
+                }
+                auth = app.auth();
+                db = app.firestore();
 
-                // Function to set default months to current month
-                const setDefaultMonths = () => {
-                    const currentMonthIndex = new Date().getMonth();
-                    const currentYear = new Date().getFullYear();
-                    const currentMonthValue = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}`;
-                    paymentPeriodStartMonthSelect.value = currentMonthValue;
-                    paymentPeriodEndMonthSelect.value = currentMonthValue;
-                };
-
-                // Render functions
-                const renderTransactionTable = () => {
-                    const tbody = document.getElementById('transactionTableBody');
-                    tbody.innerHTML = '';
-                    const searchTerm = transactionSearchInput.value.toLowerCase();
-                    const startDate = filterDateStartInput.value ? new Date(filterDateStartInput.value) : null;
-                    const endDate = filterDateEndInput.value ? new Date(filterDateEndInput.value) : null;
-                    const transactionType = filterTransactionTypeSelect.value;
-                    
-                    const filteredTransactions = transactions
-                        .filter(t => t.keterangan.toLowerCase().includes(searchTerm))
-                        .filter(t => {
-                            if (transactionType === 'all') return true;
-                            return t.jenis === transactionType;
-                        })
-                        .filter(t => {
-                            const transactionDate = new Date(t.tanggal);
-                            const startCheck = !startDate || transactionDate >= startDate;
-                            const endCheck = !endDate || transactionDate <= endDate;
-                            return startCheck && endCheck;
-                        });
-
-                    filteredTransactions.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-
-                    filteredTransactions.forEach(t => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'hover:bg-slate-100 transition-colors duration-200';
-                        const amount = t.jenis === 'pemasukan' ? formatRupiah(t.nominal) : formatRupiah(-t.nominal);
-                        const income = t.jenis === 'pemasukan' ? formatRupiah(t.nominal) : 'Rp 0';
-                        const expense = t.jenis === 'pengeluaran' ? formatRupiah(t.nominal) : 'Rp 0';
-
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${formatDate(t.tanggal)}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${t.keterangan}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-emerald-600">${income}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">${expense}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button data-id="${t.id}" class="edit-transaction-btn text-amber-600 hover:text-amber-900 transition-colors duration-200">
-                                    Edit
-                                </button>
-                                <button data-id="${t.id}" class="delete-transaction-btn text-red-600 hover:text-red-900 transition-colors duration-200 ml-2">
-                                    Hapus
-                                </button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                    
-                    // Add event listeners for edit and delete buttons
-                    document.querySelectorAll('.edit-transaction-btn').forEach(button => {
-                        button.addEventListener('click', (e) => {
-                            const transactionId = e.target.dataset.id;
-                            editTransaction(transactionId);
-                        });
-                    });
-                    document.querySelectorAll('.delete-transaction-btn').forEach(button => {
-                        button.addEventListener('click', (e) => {
-                            const transactionId = e.target.dataset.id;
-                            openConfirmationModal(transactionId);
-                        });
-                    });
-                };
-                
-                // Function to open the transaction modal for editing
-                const editTransaction = (transactionId) => {
-                    currentTransactionToEdit = transactions.find(t => t.id === transactionId);
-                    if (currentTransactionToEdit) {
-                        document.getElementById('modalTitle').textContent = 'Edit Transaksi';
-                        transactionIdInput.value = currentTransactionToEdit.id;
-                        transactionDateInput.value = currentTransactionToEdit.tanggal;
-                        transactionDescInput.value = currentTransactionToEdit.keterangan;
-                        transactionAmountInput.value = currentTransactionToEdit.nominal;
-                        document.querySelector(`input[name="transactionType"][value="${currentTransactionToEdit.jenis}"]`).checked = true;
-                        transactionWhoSelect.value = currentTransactionToEdit.payerId || '';
-                        
-                        // Set payment period if it exists
-                        paymentPeriodStartMonthSelect.value = currentTransactionToEdit.paymentPeriodStartMonth || '';
-                        paymentPeriodEndMonthSelect.value = currentTransactionToEdit.paymentPeriodEndMonth || '';
-                        
-                        deleteTransactionButton.classList.remove('hidden');
-                        transactionModal.style.display = 'flex';
-                    }
-                };
-
-                const renderMemberTable = () => {
-                    const tbody = document.getElementById('memberTableBody');
-                    tbody.innerHTML = '';
-                    members.forEach(member => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'hover:bg-slate-100 transition-colors duration-200';
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${member.nama}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button data-id="${member.id}" class="delete-member-btn text-red-600 hover:text-red-900 transition-colors duration-200">
-                                    Hapus
-                                </button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-
-                    // Add event listeners for member deletion
-                    document.querySelectorAll('.delete-member-btn').forEach(button => {
-                        button.addEventListener('click', async (e) => {
-                            const memberId = e.target.dataset.id;
-                            await deleteMember(memberId);
-                        });
-                    });
-                };
-
-                const renderPaymentStatusTable = () => {
-                    const headerRow = document.getElementById('paymentTableHeader');
-                    const tbody = document.getElementById('paymentTableBody');
-                    tbody.innerHTML = '';
-
-                    const uniqueMonths = [...new Set(transactions.filter(t => t.jenis === 'pemasukan' && t.payerId).flatMap(t => {
-                        if (t.paymentPeriodStartMonth && t.paymentPeriodEndMonth) {
-                            const start = new Date(t.paymentPeriodStartMonth);
-                            const end = new Date(t.paymentPeriodEndMonth);
-                            const months = [];
-                            let current = start;
-                            while (current <= end) {
-                                months.push(`${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`);
-                                current.setMonth(current.getMonth() + 1);
-                            }
-                            return months;
-                        }
-                        return [`${new Date(t.tanggal).getFullYear()}-${String(new Date(t.tanggal).getMonth() + 1).padStart(2, '0')}`];
-                    }))].sort();
-
-                    // Clear previous headers
-                    while (headerRow.children.length > 1) {
-                        headerRow.removeChild(headerRow.lastChild);
-                    }
-                    uniqueMonths.forEach(month => {
-                        const th = document.createElement('th');
-                        th.scope = 'col';
-                        th.className = 'px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider';
-                        th.textContent = `${getMonthName(new Date(month).getMonth())} ${new Date(month).getFullYear()}`;
-                        headerRow.appendChild(th);
-                    });
-
-                    members.forEach(member => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'hover:bg-slate-100 transition-colors duration-200';
-                        
-                        const nameTd = document.createElement('td');
-                        nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 sticky left-0 bg-white';
-                        nameTd.textContent = member.nama;
-                        tr.appendChild(nameTd);
-
-                        uniqueMonths.forEach(month => {
-                            const paymentExists = transactions.some(t => {
-                                if (t.jenis === 'pemasukan' && t.payerId === member.id) {
-                                    if (t.paymentPeriodStartMonth && t.paymentPeriodEndMonth) {
-                                        const startMonth = new Date(t.paymentPeriodStartMonth).getFullYear() + '-' + String(new Date(t.paymentPeriodStartMonth).getMonth() + 1).padStart(2, '0');
-                                        const endMonth = new Date(t.paymentPeriodEndMonth).getFullYear() + '-' + String(new Date(t.paymentPeriodEndMonth).getMonth() + 1).padStart(2, '0');
-                                        return month >= startMonth && month <= endMonth;
-                                    }
-                                    const transactionMonth = new Date(t.tanggal).getFullYear() + '-' + String(new Date(t.tanggal).getMonth() + 1).padStart(2, '0');
-                                    return transactionMonth === month;
-                                }
-                                return false;
-                            });
-
-                            const td = document.createElement('td');
-                            td.className = 'px-6 py-4 whitespace-nowrap text-sm text-center';
-                            if (paymentExists) {
-                                td.innerHTML = '<span class="text-emerald-500 font-bold">✓</span>';
-                            } else {
-                                td.innerHTML = '<span class="text-red-500 font-bold">✗</span>';
-                            }
-                            tr.appendChild(td);
-                        });
-                        tbody.appendChild(tr);
-                    });
-                };
-                
-                const renderCharts = () => {
-                    const monthlyData = transactions.reduce((acc, t) => {
-                        const monthYear = new Date(t.tanggal).toLocaleString('default', { month: 'short', year: 'numeric' });
-                        if (!acc[monthYear]) {
-                            acc[monthYear] = { income: 0, expense: 0 };
-                        }
-                        if (t.jenis === 'pemasukan') {
-                            acc[monthYear].income += t.nominal;
+                await new Promise((resolve) => {
+                    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            console.log("Authenticated with user ID:", userId);
+                            authStatus.textContent = `Masuk sebagai: ${user.displayName || user.email}`;
+                            signInButton.classList.add('hidden');
+                            signOutButton.classList.remove('hidden');
+                            appContent.classList.remove('hidden');
+                            // Start listening to Firestore data
+                            startFirestoreListeners();
                         } else {
-                            acc[monthYear].expense += t.nominal;
-                        }
-                        return acc;
-                    }, {});
-
-                    const sortedMonths = Object.keys(monthlyData).sort((a, b) => new Date(a) - new Date(b));
-                    const monthlyIncomes = sortedMonths.map(month => monthlyData[month].income);
-                    const monthlyExpenses = sortedMonths.map(month => monthlyData[month].expense);
-                    
-                    const runningBalance = sortedMonths.reduce((acc, month, index) => {
-                        const prevBalance = index > 0 ? acc[index - 1] : 0;
-                        const net = monthlyData[month].income - monthlyData[month].expense;
-                        acc.push(prevBalance + net);
-                        return acc;
-                    }, []);
-
-                    const cashflowChartCtx = document.getElementById('cashflowChart').getContext('2d');
-                    if (window.cashflowChartInstance) {
-                        window.cashflowChartInstance.destroy();
-                    }
-                    window.cashflowChartInstance = new Chart(cashflowChartCtx, {
-                        type: 'line',
-                        data: {
-                            labels: sortedMonths,
-                            datasets: [{
-                                label: 'Saldo',
-                                data: runningBalance,
-                                borderColor: '#f59e0b',
-                                tension: 0.1,
-                                fill: false
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: { y: { beginAtZero: true } }
-                        }
-                    });
-
-                    const monthlyComparisonChartCtx = document.getElementById('monthlyComparisonChart').getContext('2d');
-                    if (window.monthlyComparisonChartInstance) {
-                        window.monthlyComparisonChartInstance.destroy();
-                    }
-                    window.monthlyComparisonChartInstance = new Chart(monthlyComparisonChartCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: sortedMonths,
-                            datasets: [{
-                                label: 'Pemasukan',
-                                data: monthlyIncomes,
-                                backgroundColor: '#10b981',
-                            }, {
-                                label: 'Pengeluaran',
-                                data: monthlyExpenses,
-                                backgroundColor: '#ef4444',
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                x: { stacked: true },
-                                y: { stacked: true }
-                            }
-                        }
-                    });
-                };
-                
-                const updateKPIs = () => {
-                    const totalIncome = transactions.filter(t => t.jenis === 'pemasukan').reduce((sum, t) => sum + t.nominal, 0);
-                    const totalExpense = transactions.filter(t => t.jenis === 'pengeluaran').reduce((sum, t) => sum + t.nominal, 0);
-                    const currentBalance = totalIncome - totalExpense;
-
-                    document.getElementById('currentBalance').textContent = formatRupiah(currentBalance);
-                    document.getElementById('totalIncome').textContent = formatRupiah(totalIncome);
-                    document.getElementById('totalExpense').textContent = formatRupiah(totalExpense);
-                };
-
-                const populateMonthSelects = () => {
-                    const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-                    const currentYear = new Date().getFullYear();
-                    const years = [currentYear, currentYear + 1];
-                    
-                    const startSelect = paymentPeriodStartMonthSelect;
-                    const endSelect = paymentPeriodEndMonthSelect;
-
-                    [startSelect, endSelect].forEach(select => {
-                        select.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
-                    });
-
-                    years.forEach(year => {
-                        months.forEach((month, index) => {
-                            const value = `${year}-${String(index + 1).padStart(2, '0')}`;
-                            const optionText = `${month} ${year}`;
-                            const option1 = document.createElement('option');
-                            option1.value = value;
-                            option1.textContent = optionText;
-                            startSelect.appendChild(option1);
-
-                            const option2 = document.createElement('option');
-                            option2.value = value;
-                            option2.textContent = optionText;
-                            endSelect.appendChild(option2);
-                        });
-                    });
-                    
-                    setDefaultMonths();
-                };
-
-                // Firebase CRUD operations and data listeners
-                const subscribeToTransactions = (userId) => {
-                    const transactionsCollectionRef = db.collection(`artifacts/${appId}/users/${userId}/transactions`);
-                    transactionsCollectionRef.onSnapshot(snapshot => {
-                        transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderTransactionTable();
-                        updateKPIs();
-                        renderCharts();
-                    }, err => {
-                        console.error("Error subscribing to transactions: ", err);
-                    });
-                };
-
-                const subscribeToMembers = (userId) => {
-                    const membersCollectionRef = db.collection(`artifacts/${appId}/users/${userId}/members`);
-                    membersCollectionRef.onSnapshot(snapshot => {
-                        members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderMemberTable();
-                        renderPaymentStatusTable();
-                        populateMemberSelect();
-                    }, err => {
-                        console.error("Error subscribing to members: ", err);
-                    });
-                };
-
-                const populateMemberSelect = () => {
-                    transactionWhoSelect.innerHTML = '<option value="">Pilih Anggota (Opsional)</option>';
-                    members.forEach(member => {
-                        const option = document.createElement('option');
-                        option.value = member.id;
-                        option.textContent = member.nama;
-                        transactionWhoSelect.appendChild(option);
-                    });
-                };
-
-                const saveTransaction = async (e) => {
-                    e.preventDefault();
-                    
-                    const spinner = document.getElementById('saveTransactionSpinner');
-                    spinner.classList.remove('hidden');
-                    saveTransactionButton.disabled = true;
-
-                    const transactionId = transactionIdInput.value;
-                    const transactionData = {
-                        tanggal: transactionDateInput.value,
-                        keterangan: transactionDescInput.value,
-                        nominal: parseFloat(transactionAmountInput.value),
-                        jenis: document.querySelector('input[name="transactionType"]:checked').value,
-                        payerId: transactionWhoSelect.value || null,
-                        paymentPeriodStartMonth: paymentPeriodStartMonthSelect.value || null,
-                        paymentPeriodEndMonth: paymentPeriodEndMonthSelect.value || null,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-                    
-                    try {
-                        if (transactionId) {
-                            // Update transaction
-                            const transactionRef = db.collection(`artifacts/${appId}/users/${currentUserId}/transactions`).doc(transactionId);
-                            await transactionRef.update(transactionData);
-                        } else {
-                            // Add new transaction
-                            await db.collection(`artifacts/${appId}/users/${currentUserId}/transactions`).add(transactionData);
-                        }
-                        
-                        transactionForm.reset();
-                        transactionModal.style.display = 'none';
-                    } catch (error) {
-                        console.error("Error saving transaction: ", error);
-                    } finally {
-                        spinner.classList.add('hidden');
-                        saveTransactionButton.disabled = false;
-                        setDefaultMonths();
-                    }
-                };
-
-                const deleteTransaction = async (transactionId) => {
-                    const spinner = document.getElementById('deleteTransactionSpinner');
-                    spinner.classList.remove('hidden');
-                    deleteTransactionButton.disabled = true;
-
-                    try {
-                        await db.collection(`artifacts/${appId}/users/${currentUserId}/transactions`).doc(transactionId).delete();
-                        transactionModal.style.display = 'none';
-                    } catch (error) {
-                        console.error("Error deleting transaction: ", error);
-                    } finally {
-                        spinner.classList.add('hidden');
-                        deleteTransactionButton.disabled = false;
-                    }
-                };
-                
-                const addMember = async () => {
-                    const newMemberNameInput = document.getElementById('newMemberName');
-                    const memberName = newMemberNameInput.value.trim();
-                    if (memberName) {
-                        const spinner = document.getElementById('addMemberSpinner');
-                        spinner.classList.remove('hidden');
-                        document.getElementById('addMemberButton').disabled = true;
-
-                        try {
-                            await db.collection(`artifacts/${appId}/users/${currentUserId}/members`).add({
-                                nama: memberName,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            newMemberNameInput.value = '';
-                        } catch (error) {
-                            console.error("Error adding member: ", error);
-                        } finally {
-                            spinner.classList.add('hidden');
-                            document.getElementById('addMemberButton').disabled = false;
-                        }
-                    }
-                };
-                
-                const deleteMember = async (memberId) => {
-                    try {
-                        // Check if the member has any associated transactions before deleting
-                        const querySnapshot = await db.collection(`artifacts/${appId}/users/${currentUserId}/transactions`).where('payerId', '==', memberId).get();
-                        if (!querySnapshot.empty) {
-                            // If transactions exist, we don't delete the member to maintain data integrity.
-                            // Show a custom modal or message box.
-                            alert('Anggota ini tidak dapat dihapus karena memiliki riwayat transaksi.');
-                            return;
-                        }
-                        await db.collection(`artifacts/${appId}/users/${currentUserId}/members`).doc(memberId).delete();
-                    } catch (error) {
-                        console.error("Error deleting member: ", error);
-                    }
-                };
-
-                // Event listeners
-                const switchTab = (tabId) => {
-                    Object.values(tabContents).forEach(content => content.classList.add('hidden'));
-                    Object.values(tabButtons).forEach(button => button.classList.remove('active'));
-                    
-                    const activeContent = document.getElementById(`content-${tabId.split('-')[1]}`);
-                    if (activeContent) {
-                        activeContent.classList.remove('hidden');
-                    }
-
-                    const activeButton = document.getElementById(tabId);
-                    if (activeButton) {
-                        activeButton.classList.add('active');
-                    }
-                };
-                
-                tabButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        switchTab(button.id);
-                    });
-                });
-
-                openNewTransactionModalButton.addEventListener('click', () => {
-                    transactionForm.reset();
-                    transactionIdInput.value = '';
-                    document.getElementById('modalTitle').textContent = 'Input Transaksi Baru';
-                    deleteTransactionButton.classList.add('hidden');
-                    transactionModal.style.display = 'flex';
-                    setDefaultMonths();
-                });
-                
-                closeModalButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        transactionModal.style.display = 'none';
-                        confirmationModal.style.display = 'none';
-                    });
-                });
-                
-                window.onclick = function(event) {
-                    if (event.target == transactionModal) {
-                        transactionModal.style.display = 'none';
-                    }
-                    if (event.target == confirmationModal) {
-                        confirmationModal.style.display = 'none';
-                    }
-                };
-                
-                transactionForm.addEventListener('submit', saveTransaction);
-                document.getElementById('addMemberButton').addEventListener('click', addMember);
-
-                // Filter and Search event listeners
-                transactionSearchInput.addEventListener('input', renderTransactionTable);
-                filterDateStartInput.addEventListener('change', renderTransactionTable);
-                filterDateEndInput.addEventListener('change', renderTransactionTable);
-                filterTransactionTypeSelect.addEventListener('change', renderTransactionTable);
-
-                // Confirmation modal logic
-                let transactionIdToDelete = null;
-                const openConfirmationModal = (id) => {
-                    transactionIdToDelete = id;
-                    confirmationModal.style.display = 'flex';
-                };
-                confirmDeleteButton.addEventListener('click', () => {
-                    if (transactionIdToDelete) {
-                        deleteTransaction(transactionIdToDelete);
-                        transactionIdToDelete = null;
-                    }
-                    confirmationModal.style.display = 'none';
-                });
-                cancelDeleteButton.addEventListener('click', () => {
-                    transactionIdToDelete = null;
-                    confirmationModal.style.display = 'none';
-                });
-
-                // Firebase Authentication
-                auth.onAuthStateChanged(async (user) => {
-                    const uid = user ? user.uid : (localStorage.getItem('tempUserId') || crypto.randomUUID());
-                    currentUserId = uid;
-                    if (!user) {
-                        localStorage.setItem('tempUserId', uid);
-                    }
-                    
-                    if (user) {
-                        authStatus.textContent = `Login sebagai: ${user.displayName} (${user.email}) | ID: ${currentUserId}`;
-                        signInButton.classList.add('hidden');
-                        signOutButton.classList.remove('hidden');
-                        appContent.classList.remove('hidden');
-                        
-                        subscribeToTransactions(currentUserId);
-                        subscribeToMembers(currentUserId);
-                    } else {
-                        // Attempt to sign in with custom token or anonymously
-                        try {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                await auth.signInWithCustomToken(__initial_auth_token);
-                            } else {
-                                await auth.signInAnonymously();
-                            }
-                        } catch (error) {
-                            console.error("Error during authentication:", error);
-                            authStatus.textContent = "Gagal memuat. Silakan coba login.";
+                            userId = null;
+                            authStatus.textContent = `Anda belum login.`;
                             signInButton.classList.remove('hidden');
                             signOutButton.classList.add('hidden');
                             appContent.classList.add('hidden');
+                            console.log("Not authenticated.");
+                        }
+                        unsubscribe(); // Unsubscribe after the first call
+                        resolve();
+                    });
+                });
+
+                if (initialAuthToken) {
+                    await auth.signInWithCustomToken(initialAuthToken);
+                } else {
+                    await auth.signInAnonymously();
+                }
+            } catch (error) {
+                console.error("Error during Firebase initialization or sign-in:", error);
+            }
+        }
+
+        // Firestore Listeners
+        function startFirestoreListeners() {
+            // Member listener
+            db.collection(`artifacts/${appId}/users/${userId}/members`).onSnapshot(snapshot => {
+                members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMemberTable();
+                populateMemberDropdowns();
+                renderPaymentTable(); // Re-render payment table when members change
+            }, err => {
+                console.error("Error fetching members:", err);
+            });
+
+            // Transaction listener
+            db.collection(`artifacts/${appId}/users/${userId}/transactions`).onSnapshot(snapshot => {
+                transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Sort transactions by date descending
+                transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+                calculateAndRenderKPIs();
+                updatePaymentStatus(); // Update payments based on new transactions
+                renderAllUI();
+            }, err => {
+                console.error("Error fetching transactions:", err);
+            });
+        }
+
+        // UI Rendering Functions
+        function renderAllUI() {
+            renderTransactionTable();
+            renderCharts();
+            renderPaymentTable();
+        }
+
+        function calculateAndRenderKPIs() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+            transactions.forEach(t => {
+                if (t.type === 'pemasukan') {
+                    totalIncome += t.amount;
+                } else {
+                    totalExpense += t.amount;
+                }
+            });
+            const currentBalance = totalIncome - totalExpense;
+
+            currentBalanceEl.textContent = `Rp ${currentBalance.toLocaleString('id-ID')}`;
+            totalIncomeEl.textContent = `Rp ${totalIncome.toLocaleString('id-ID')}`;
+            totalExpenseEl.textContent = `Rp ${totalExpense.toLocaleString('id-ID')}`;
+        }
+
+        function renderTransactionTable() {
+            const searchText = transactionSearchInput.value.toLowerCase();
+            const selectedMonthIndex = transactionMonthFilter.value;
+            const selectedYear = transactionYearFilter.value;
+
+            // Filter transactions
+            const filteredTransactions = transactions.filter(t => {
+                const transactionDate = new Date(t.date);
+                const transactionYear = transactionDate.getFullYear().toString();
+                const transactionMonth = transactionDate.getMonth().toString();
+
+                const monthMatch = selectedMonthIndex === "" || transactionMonth === selectedMonthIndex;
+                const yearMatch = selectedYear === "" || transactionYear === selectedYear;
+                const searchMatch = t.description.toLowerCase().includes(searchText);
+
+                return monthMatch && yearMatch && searchMatch;
+            });
+
+            transactionTableBody.innerHTML = '';
+            if (filteredTransactions.length === 0) {
+                 transactionTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Tidak ada transaksi ditemukan.</td></tr>`;
+                 return;
+            }
+
+            filteredTransactions.forEach(t => {
+                const memberName = members.find(m => m.id === t.who)?.name || 'Anonim';
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50 transition duration-150 ease-in-out';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${t.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${t.description}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${memberName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-emerald-600">${t.type === 'pemasukan' ? `Rp ${t.amount.toLocaleString('id-ID')}` : '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">${t.type === 'pengeluaran' ? `Rp ${t.amount.toLocaleString('id-ID')}` : '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="openEditModal('${t.id}')" class="text-amber-600 hover:text-amber-900 mr-2">Edit</button>
+                        <button onclick="deleteTransaction('${t.id}')" class="text-red-600 hover:text-red-900">Hapus</button>
+                    </td>
+                `;
+                transactionTableBody.appendChild(row);
+            });
+        }
+
+        function updatePaymentStatus() {
+            // Reset payments object
+            payments = {};
+
+            // Initialize payments object for all members
+            members.forEach(member => {
+                payments[member.id] = {};
+            });
+
+            transactions.forEach(t => {
+                if (t.type === 'pemasukan' && t.who && payments[t.who]) {
+                    const start = t.paymentPeriodStartMonth ? parseInt(t.paymentPeriodStartMonth) : null;
+                    const end = t.paymentPeriodEndMonth ? parseInt(t.paymentPeriodEndMonth) : start;
+
+                    if (start !== null) {
+                        for (let i = start; i <= end; i++) {
+                            const year = new Date(t.date).getFullYear();
+                            const monthKey = `${year}-${i}`;
+                            payments[t.who][monthKey] = true;
                         }
                     }
-                });
+                }
+            });
 
-                signInButton.addEventListener('click', async () => {
-                    try {
-                        const provider = new firebase.auth.GoogleAuthProvider();
-                        await auth.signInWithPopup(provider);
-                    } catch (error) {
-                        console.error("Google login failed:", error);
-                    }
-                });
+            renderPaymentTable();
+        }
+
+        function renderPaymentTable() {
+            // Clear existing headers and body
+            paymentTableHeader.innerHTML = `<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50 z-10">Nama Anggota</th>`;
+            paymentTableBody.innerHTML = '';
+
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth();
+
+            // Generate month headers for the current year
+            for (let i = 0; i <= currentMonth; i++) {
+                const monthName = months[i];
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.className = 'px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider';
+                th.textContent = monthName;
+                paymentTableHeader.appendChild(th);
+            }
+
+            members.forEach(member => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50 transition duration-150 ease-in-out';
+                row.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 sticky left-0 bg-white z-10">${member.name}</td>`;
                 
-                signOutButton.addEventListener('click', async () => {
-                    try {
-                        await auth.signOut();
-                        // Clear the temporary ID on sign out
-                        localStorage.removeItem('tempUserId');
-                        window.location.reload();
-                    } catch (error) {
-                        console.error("Logout failed:", error);
-                    }
-                });
+                for (let i = 0; i <= currentMonth; i++) {
+                    const monthKey = `${currentYear}-${i}`;
+                    const isPaid = payments[member.id] && payments[member.id][monthKey];
+                    const cell = document.createElement('td');
+                    cell.className = 'px-6 py-4 whitespace-nowrap text-center text-sm';
+                    cell.innerHTML = isPaid
+                        ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800">Lunas</span>`
+                        : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Belum</span>`;
+                    row.appendChild(cell);
+                }
+                paymentTableBody.appendChild(row);
+            });
+        }
 
-                // Initial calls
-                populateMonthSelects();
+
+        function renderMemberTable() {
+            memberTableBody.innerHTML = '';
+            members.forEach(m => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50 transition duration-150 ease-in-out';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${m.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="deleteMember('${m.id}')" class="text-red-600 hover:text-red-900">Hapus</button>
+                    </td>
+                `;
+                memberTableBody.appendChild(row);
+            });
+        }
+
+        function populateMemberDropdowns() {
+            transactionWhoSelect.innerHTML = '<option value="">Pilih Anggota (Opsional)</option>';
+            members.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member.id;
+                option.textContent = member.name;
+                transactionWhoSelect.appendChild(option);
+            });
+        }
+
+        function populateMonthYearFilters() {
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth();
+
+            // Populate Year filter
+            transactionYearFilter.innerHTML = '<option value="">Semua Tahun</option>';
+            for (let i = currentYear; i >= currentYear - 5; i--) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                transactionYearFilter.appendChild(option);
+            }
+            transactionYearFilter.value = currentYear;
+
+            // Populate Month filter
+            transactionMonthFilter.innerHTML = '<option value="">Semua Bulan</option>';
+            months.forEach((month, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = month;
+                transactionMonthFilter.appendChild(option);
+            });
+            transactionMonthFilter.value = currentMonth;
+        }
+
+        function populatePaymentMonthOptions() {
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            const nextYear = currentYear + 1;
+
+            const monthsWithYears = [];
+            for (let i = 0; i < months.length; i++) {
+                monthsWithYears.push({ value: `${currentYear}-${i}`, text: `${months[i]} ${currentYear}` });
+            }
+            for (let i = 0; i < months.length; i++) {
+                 monthsWithYears.push({ value: `${nextYear}-${i}`, text: `${months[i]} ${nextYear}` });
+            }
+
+            // Populate start month select
+            paymentPeriodStartMonth.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
+            monthsWithYears.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.value;
+                option.textContent = m.text;
+                paymentPeriodStartMonth.appendChild(option);
+            });
+            paymentPeriodStartMonth.value = `${currentYear}-${currentMonth}`; // Set default
+
+            // Populate end month select
+            paymentPeriodEndMonth.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
+            monthsWithYears.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.value;
+                option.textContent = m.text;
+                paymentPeriodEndMonth.appendChild(option);
+            });
+            paymentPeriodEndMonth.value = `${currentYear}-${currentMonth}`; // Set default
+        }
+
+
+        function renderCharts() {
+            if (monthlyChartInstance) monthlyChartInstance.destroy();
+            if (cashflowChartInstance) cashflowChartInstance.destroy();
+
+            const monthlyData = {};
+            const monthlyCashflow = {};
+            transactions.forEach(t => {
+                const date = new Date(t.date);
+                const monthYear = `${date.getFullYear()}-${date.getMonth()}`;
+                if (!monthlyData[monthYear]) {
+                    monthlyData[monthYear] = { income: 0, expense: 0 };
+                }
+                if (t.type === 'pemasukan') {
+                    monthlyData[monthYear].income += t.amount;
+                } else {
+                    monthlyData[monthYear].expense += t.amount;
+                }
+            });
+
+            let currentBalance = 0;
+            transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+            transactions.forEach(t => {
+                if (t.type === 'pemasukan') {
+                    currentBalance += t.amount;
+                } else {
+                    currentBalance -= t.amount;
+                }
+                const date = t.date;
+                monthlyCashflow[date] = currentBalance;
+            });
+
+
+            const chartLabels = Object.keys(monthlyData).sort();
+            const incomeData = chartLabels.map(key => monthlyData[key].income);
+            const expenseData = chartLabels.map(key => monthlyData[key].expense);
+            const chartLabelsFormatted = chartLabels.map(key => {
+                const [year, month] = key.split('-');
+                return `${months[parseInt(month)]} ${year}`;
+            });
+
+            const cashflowLabels = Object.keys(monthlyCashflow).sort();
+            const cashflowData = cashflowLabels.map(key => monthlyCashflow[key]);
+
+
+            // Monthly Comparison Chart
+            const ctxMonthly = document.getElementById('monthlyComparisonChart').getContext('2d');
+            monthlyChartInstance = new Chart(ctxMonthly, {
+                type: 'bar',
+                data: {
+                    labels: chartLabelsFormatted,
+                    datasets: [
+                        {
+                            label: 'Pemasukan',
+                            data: incomeData,
+                            backgroundColor: '#10b981', // emerald-500
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Pengeluaran',
+                            data: expenseData,
+                            backgroundColor: '#ef4444', // red-500
+                            borderRadius: 6,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Cashflow Chart
+            const ctxCashflow = document.getElementById('cashflowChart').getContext('2d');
+            cashflowChartInstance = new Chart(ctxCashflow, {
+                type: 'line',
+                data: {
+                    labels: cashflowLabels,
+                    datasets: [{
+                        label: 'Saldo',
+                        data: cashflowData,
+                        borderColor: '#f59e0b', // amber-500
+                        tension: 0.1,
+                        fill: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+
+        // CRUD Operations
+        async function addMember(name) {
+            if (!name.trim()) return;
+            addMemberButton.disabled = true;
+            addMemberSpinner.classList.remove('hidden');
+            try {
+                await db.collection(`artifacts/${appId}/users/${userId}/members`).add({ name: name });
+                newMemberNameInput.value = '';
+            } catch (e) {
+                console.error("Error adding member: ", e);
+            } finally {
+                addMemberButton.disabled = false;
+                addMemberSpinner.classList.add('hidden');
+            }
+        }
+
+        async function deleteMember(id) {
+            // In a real app, you'd confirm this action.
+            if (!confirm('Apakah Anda yakin ingin menghapus anggota ini? Ini akan menghapus semua data terkait.')) {
+                return;
+            }
+            try {
+                // Delete member
+                await db.collection(`artifacts/${appId}/users/${userId}/members`).doc(id).delete();
+                // Find and delete all related transactions
+                const q = db.collection(`artifacts/${appId}/users/${userId}/transactions`).where('who', '==', id);
+                const querySnapshot = await q.get();
+                const batch = db.batch();
+                querySnapshot.forEach((doc) => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+            } catch (e) {
+                console.error("Error deleting member and related transactions: ", e);
+            }
+        }
+
+        async function addOrUpdateTransaction(transactionData, transactionId = null) {
+            submitTransactionButton.disabled = true;
+            addTransactionSpinner.classList.remove('hidden');
+
+            try {
+                if (transactionId) {
+                    // Update existing transaction
+                    await db.collection(`artifacts/${appId}/users/${userId}/transactions`).doc(transactionId).update(transactionData);
+                } else {
+                    // Add new transaction
+                    await db.collection(`artifacts/${appId}/users/${userId}/transactions`).add(transactionData);
+                }
+                closeModal('transactionModal');
+            } catch (e) {
+                console.error("Error adding/updating document: ", e);
+            } finally {
+                submitTransactionButton.disabled = false;
+                addTransactionSpinner.classList.add('hidden');
+            }
+        }
+
+        async function deleteTransaction(id) {
+            // In a real app, you'd confirm this action.
+            if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
+                return;
+            }
+            try {
+                await db.collection(`artifacts/${appId}/users/${userId}/transactions`).doc(id).delete();
+            } catch (e) {
+                console.error("Error deleting document: ", e);
+            }
+        }
+
+        // Modal functions
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function openAddModal() {
+            modalTitle.textContent = 'Input Transaksi Baru';
+            transactionIdInput.value = '';
+            transactionForm.reset();
+            // Set default values
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            transactionDateInput.value = `${yyyy}-${mm}-${dd}`;
+            
+            // Populate month/year options with defaults
+            populatePaymentMonthOptions();
+
+            submitTransactionButton.textContent = 'Tambah Transaksi';
+            showModal('transactionModal');
+        }
+
+        function openEditModal(transactionId) {
+            const transaction = transactions.find(t => t.id === transactionId);
+            if (!transaction) return;
+
+            modalTitle.textContent = 'Edit Transaksi';
+            transactionIdInput.value = transaction.id;
+            transactionDateInput.value = transaction.date;
+            transactionDescInput.value = transaction.description;
+            transactionAmountInput.value = transaction.amount;
+            document.querySelector(`input[name="transactionType"][value="${transaction.type}"]`).checked = true;
+            transactionWhoSelect.value = transaction.who || '';
+            
+            // Set payment period fields
+            populatePaymentMonthOptions();
+            if (transaction.paymentPeriodStartMonth !== undefined) {
+                const year = new Date(transaction.date).getFullYear();
+                paymentPeriodStartMonth.value = `${year}-${transaction.paymentPeriodStartMonth}`;
             } else {
-                alert("Firebase configuration is missing. Please ensure '__firebase_config' is available.");
+                 paymentPeriodStartMonth.value = '';
+            }
+            if (transaction.paymentPeriodEndMonth !== undefined) {
+                const year = new Date(transaction.date).getFullYear();
+                paymentPeriodEndMonth.value = `${year}-${transaction.paymentPeriodEndMonth}`;
+            } else {
+                 paymentPeriodEndMonth.value = '';
+            }
+
+
+            submitTransactionButton.textContent = 'Simpan Perubahan';
+            showModal('transactionModal');
+        }
+
+        // Event Listeners
+        window.addEventListener('load', () => {
+            initializeFirebase();
+            populateMonthYearFilters();
+        });
+
+        // Tab switching
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                tabContents.forEach(content => content.classList.add('hidden'));
+                document.getElementById(button.id.replace('tab-', 'content-')).classList.remove('hidden');
+            });
+        });
+
+        // Add/update transaction form submission
+        transactionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const transactionId = transactionIdInput.value;
+            const transactionData = {
+                date: transactionDateInput.value,
+                description: transactionDescInput.value,
+                amount: parseFloat(transactionAmountInput.value),
+                type: document.querySelector('input[name="transactionType"]:checked').value,
+                who: transactionWhoSelect.value || null,
+            };
+
+            const startMonthValue = paymentPeriodStartMonth.value;
+            const endMonthValue = paymentPeriodEndMonth.value;
+
+            if (startMonthValue) {
+                transactionData.paymentPeriodStartMonth = parseInt(startMonthValue.split('-')[1]);
+            }
+            if (endMonthValue) {
+                transactionData.paymentPeriodEndMonth = parseInt(endMonthValue.split('-')[1]);
+            }
+
+            await addOrUpdateTransaction(transactionData, transactionId);
+        });
+
+        // Add member
+        addMemberButton.addEventListener('click', () => {
+            addMember(newMemberNameInput.value);
+        });
+
+        // Modal open/close
+        addTransactionButton.addEventListener('click', openAddModal);
+        closeTransactionModal.addEventListener('click', () => closeModal('transactionModal'));
+        window.addEventListener('click', (event) => {
+            if (event.target === transactionModal) {
+                closeModal('transactionModal');
             }
         });
+
+        // Filter and Search event listeners
+        transactionMonthFilter.addEventListener('change', renderTransactionTable);
+        transactionYearFilter.addEventListener('change', renderTransactionTable);
+        transactionSearchInput.addEventListener('keyup', renderTransactionTable);
+
+        // Firebase Auth Listeners
+        signInButton.addEventListener('click', async () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await firebase.auth().signInWithPopup(provider);
+            } catch (error) {
+                console.error("Error during Google sign-in:", error);
+            }
+        });
+
+        signOutButton.addEventListener('click', async () => {
+            try {
+                await firebase.auth().signOut();
+            } catch (error) {
+                console.error("Error during sign-out:", error);
+            }
+        });
+
     </script>
 </body>
 </html>
