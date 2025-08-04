@@ -82,9 +82,12 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            width: 80%;
-            max-width: 500px;
-            text-align: center;
+            width: 90%;
+            max-width: 600px;
+            text-align: left;
+        }
+        .modal-content.centered-text {
+             text-align: center;
         }
         .close-button {
             color: #aaa;
@@ -171,9 +174,6 @@
                             <button id="tab-payments" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
                                 Status Pembayaran Anggota
                             </button>
-                            <button id="tab-input-transaction" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
-                                Input Transaksi Baru
-                            </button>
                             <button id="tab-member-management" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
                                 Kelola Anggota
                             </button>
@@ -181,9 +181,18 @@
                     </div>
 
                     <div id="content-transactions" class="p-4 md:p-6">
-                        <h3 class="text-lg font-semibold mb-1 text-slate-900">Detail Semua Transaksi</h3>
-                        <p class="text-sm text-slate-500 mb-4">Gunakan kolom pencarian untuk menemukan transaksi spesifik berdasarkan keterangan.</p>
-                        <input type="text" id="transactionSearch" placeholder="Cari transaksi..." class="w-full max-w-xs mb-4 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-900">Detail Semua Transaksi</h3>
+                                <p class="text-sm text-slate-500">Gunakan kolom pencarian untuk menemukan transaksi spesifik.</p>
+                            </div>
+                            <div class="flex w-full sm:w-auto gap-2">
+                                <input type="text" id="transactionSearch" placeholder="Cari transaksi..." class="w-full sm:w-auto p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+                                <button id="openAddTransactionModalButton" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex-shrink-0">
+                                    + Tambah
+                                </button>
+                            </div>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-slate-200">
                                 <thead class="bg-slate-50">
@@ -219,67 +228,9 @@
                             </table>
                         </div>
                     </div>
-
-                    <div id="content-input-transaction" class="hidden p-4 md:p-6">
-                        <h3 class="text-lg font-semibold mb-1 text-slate-900">Input Transaksi Baru</h3>
-                        <p class="text-sm text-slate-500 mb-4">Masukkan detail transaksi pemasukan atau pengeluaran baru.</p>
-                        <form id="transactionForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="transactionDate" class="block text-sm font-medium text-slate-700">Tanggal</label>
-                                <input type="date" id="transactionDate" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
-                            </div>
-                            <div>
-                                <label for="transactionDesc" class="block text-sm font-medium text-slate-700">Keterangan</label>
-                                <input type="text" id="transactionDesc" placeholder="Contoh: Pembelian buku kas" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
-                            </div>
-                            <div>
-                                <label for="transactionAmount" class="block text-sm font-medium text-slate-700">Nominal (Rp)</label>
-                                <input type="number" id="transactionAmount" placeholder="Contoh: 50000" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required min="0">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700">Jenis Transaksi</label>
-                                <div class="mt-1 flex items-center space-x-4">
-                                    <label class="inline-flex items-center">
-                                        <input type="radio" name="transactionType" value="pemasukan" class="form-radio text-emerald-600" checked>
-                                        <span class="ml-2 text-slate-700">Pemasukan</span>
-                                    </label>
-                                    <label class="inline-flex items-center">
-                                        <input type="radio" name="transactionType" value="pengeluaran" class="form-radio text-red-600">
-                                        <span class="ml-2 text-slate-700">Pengeluaran</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="transactionWho" class="block text-sm font-medium text-slate-700">Penyetor / Pengambil</label>
-                                <select id="transactionWho" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                                    <option value="">Pilih Anggota (Opsional)</option>
-                                    <!-- Options will be populated by JavaScript -->
-                                </select>
-                            </div>
-                            <!-- New fields for multi-month payment -->
-                            <div class="md:col-span-2">
-                                <label for="paymentPeriodStartMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Mulai)</label>
-                                <select id="paymentPeriodStartMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                                    <option value="">Pilih Bulan (Opsional)</option>
-                                    <!-- Options will be populated by JavaScript -->
-                                </select>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="paymentPeriodEndMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Akhir)</label>
-                                <select id="paymentPeriodEndMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                                    <option value="">Pilih Bulan (Opsional)</option>
-                                    <!-- Options will be populated by JavaScript -->
-                                </select>
-                            </div>
-                            <!-- End new fields -->
-                            <div class="md:col-span-2 flex justify-end">
-                                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
-                                    Tambah Transaksi
-                                    <span id="addTransactionSpinner" class="loading-spinner hidden"></span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    
+                    <!-- This div is now hidden and its content moved to a modal -->
+                    <div id="content-input-transaction" class="hidden"></div>
 
                     <div id="content-member-management" class="hidden p-4 md:p-6">
                         <h3 class="text-lg font-semibold mb-1 text-slate-900">Kelola Anggota</h3>
@@ -399,9 +350,11 @@
         </main>
     </div>
 
+    <!-- MODALS SECTION -->
+    
     <!-- Custom Modal for Confirmation -->
     <div id="confirmationModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content centered-text">
             <span class="close-button">&times;</span>
             <p id="modalMessage" class="text-lg font-medium text-slate-800 mb-6">Apakah Anda yakin?</p>
             <div class="flex justify-center space-x-4">
@@ -417,12 +370,128 @@
             <span class="close-button" id="closeEditMemberModal">&times;</span>
             <h3 class="text-lg font-semibold mb-4 text-slate-900">Edit Nama Anggota</h3>
             <input type="text" id="editMemberNameInput" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500 mb-4" placeholder="Nama Anggota Baru">
-            <div class="flex justify-center space-x-4">
-                <button id="saveEditedMemberName" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Simpan</button>
+            <div class="flex justify-end space-x-4">
                 <button id="cancelEditMemberName" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Batal</button>
+                <button id="saveEditedMemberName" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Simpan</button>
             </div>
         </div>
     </div>
+
+    <!-- NEW: Modal for Adding a New Transaction -->
+    <div id="addTransactionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeAddTransactionModal">&times;</span>
+            <h3 class="text-lg font-semibold mb-1 text-slate-900">Input Transaksi Baru</h3>
+            <p class="text-sm text-slate-500 mb-4">Masukkan detail transaksi pemasukan atau pengeluaran baru.</p>
+            <form id="transactionForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="transactionDate" class="block text-sm font-medium text-slate-700">Tanggal</label>
+                    <input type="date" id="transactionDate" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
+                </div>
+                <div>
+                    <label for="transactionDesc" class="block text-sm font-medium text-slate-700">Keterangan</label>
+                    <input type="text" id="transactionDesc" placeholder="Contoh: Pembelian buku kas" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
+                </div>
+                <div>
+                    <label for="transactionAmount" class="block text-sm font-medium text-slate-700">Nominal (Rp)</label>
+                    <input type="number" id="transactionAmount" placeholder="Contoh: 50000" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required min="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Jenis Transaksi</label>
+                    <div class="mt-1 flex items-center space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="transactionType" value="pemasukan" class="form-radio text-emerald-600" checked>
+                            <span class="ml-2 text-slate-700">Pemasukan</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="transactionType" value="pengeluaran" class="form-radio text-red-600">
+                            <span class="ml-2 text-slate-700">Pengeluaran</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="transactionWho" class="block text-sm font-medium text-slate-700">Penyetor / Pengambil</label>
+                    <select id="transactionWho" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        <option value="">Pilih Anggota (Opsional)</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <!-- New fields for multi-month payment -->
+                <div class="md:col-span-2">
+                    <label for="paymentPeriodStartMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Mulai)</label>
+                    <select id="paymentPeriodStartMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        <option value="">Pilih Bulan (Opsional)</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="paymentPeriodEndMonth" class="block text-sm font-medium text-slate-700">Pembayaran Untuk Bulan (Akhir)</label>
+                    <select id="paymentPeriodEndMonth" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        <option value="">Pilih Bulan (Opsional)</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <!-- End new fields -->
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
+                        Tambah Transaksi
+                        <span id="addTransactionSpinner" class="loading-spinner hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW: Modal for Editing an Existing Transaction -->
+    <div id="editTransactionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeEditTransactionModal">&times;</span>
+            <h3 class="text-lg font-semibold mb-1 text-slate-900">Edit Transaksi</h3>
+            <p class="text-sm text-slate-500 mb-4">Ubah detail transaksi yang sudah ada.</p>
+            <form id="editTransactionForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="editTransactionId">
+                <div>
+                    <label for="editTransactionDate" class="block text-sm font-medium text-slate-700">Tanggal</label>
+                    <input type="date" id="editTransactionDate" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
+                </div>
+                <div>
+                    <label for="editTransactionDesc" class="block text-sm font-medium text-slate-700">Keterangan</label>
+                    <input type="text" id="editTransactionDesc" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required>
+                </div>
+                <div>
+                    <label for="editTransactionAmount" class="block text-sm font-medium text-slate-700">Nominal (Rp)</label>
+                    <input type="number" id="editTransactionAmount" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500" required min="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Jenis Transaksi</label>
+                    <div class="mt-1 flex items-center space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="editTransactionType" value="pemasukan" class="form-radio text-emerald-600">
+                            <span class="ml-2 text-slate-700">Pemasukan</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="editTransactionType" value="pengeluaran" class="form-radio text-red-600">
+                            <span class="ml-2 text-slate-700">Pengeluaran</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="editTransactionWho" class="block text-sm font-medium text-slate-700">Penyetor / Pengambil</label>
+                    <select id="editTransactionWho" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="md:col-span-2 flex justify-end space-x-4">
+                     <button type="button" id="cancelEditTransaction" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">Batal</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
+                        Simpan Perubahan
+                        <span id="editTransactionSpinner" class="loading-spinner hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -625,6 +694,16 @@
                 cashflowData.push(transaction);
                 saveDataToFirestore(); // Trigger save to Firestore
             }
+            
+            // NEW: Update an existing transaction
+            function updateTransaction(docId, updatedData) {
+                const transactionIndex = cashflowData.findIndex(item => item.docId === docId);
+                if (transactionIndex > -1) {
+                    // Keep the original docId
+                    cashflowData[transactionIndex] = { ...updatedData, docId: docId };
+                    saveDataToFirestore();
+                }
+            }
 
             async function deleteTransaction(docId) {
                 cashflowData = cashflowData.filter(item => item.docId !== docId);
@@ -691,7 +770,7 @@
                 renderTransactionTable();
                 renderPaymentTable(); // Render payment table with all months
                 renderMemberTable();
-                populateTransactionWhoDropdown(); // Populate dropdown after members are loaded
+                populateTransactionWhoDropdowns(); // Populate dropdowns for both add and edit modals
                 populatePaymentPeriodDropdowns(); // Populate new payment period dropdowns
                 populatePdfMonthCheckboxes(); // Ensure PDF month checkboxes are populated
             }
@@ -857,6 +936,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-semibold text-right">${item.pemasukan > 0 ? formatCurrency(item.pemasukan) : '-'}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold text-right">${item.pengeluaran > 0 ? formatCurrency(item.pengeluaran) : '-'}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button data-doc-id="${item.docId}" class="edit-transaction-button text-blue-600 hover:text-blue-900 mr-2">Edit</button>
                                 <button data-doc-id="${item.docId}" class="delete-transaction-button text-red-600 hover:text-red-900">Hapus</button>
                             </td>
                         </tr>
@@ -864,12 +944,23 @@
                     tableBody.innerHTML += row;
                 });
 
+                // Attach event listeners after rendering all rows
                 document.querySelectorAll('.delete-transaction-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
+                    button.addEventListener('click', (e) => {
                         const docId = e.target.dataset.docId;
-                        showConfirmationModal(`Apakah Anda yakin ingin menghapus transaksi ini?`, async () => {
+                        showConfirmationModal(`Apakah Anda yakin ingin menghapus transaksi ini?`, () => {
                             deleteTransaction(docId);
                         });
+                    });
+                });
+                
+                document.querySelectorAll('.edit-transaction-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const docId = e.target.dataset.docId;
+                        const transaction = cashflowData.find(t => t.docId === docId);
+                        if (transaction) {
+                            showEditTransactionModal(transaction);
+                        }
                     });
                 });
             }
@@ -921,6 +1012,7 @@
                 paymentData.forEach(member => {
                     // Only reset for non-system users
                     if (!member.isSystem) {
+                        member.pembayaran = {}; // Clear old payments
                         months.forEach(month => {
                             member.pembayaran[month] = 'Belum';
                         });
@@ -987,10 +1079,10 @@
                 });
 
                 document.querySelectorAll('.delete-member-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
+                    button.addEventListener('click', (e) => {
                         const docId = e.target.dataset.docId;
                         const memberName = e.target.closest('tr').querySelector('td').textContent;
-                        showConfirmationModal(`Apakah Anda yakin ingin menghapus anggota "${memberName}"? Ini juga akan menghapus semua transaksi terkait dengan anggota ini.`, async () => {
+                        showConfirmationModal(`Apakah Anda yakin ingin menghapus anggota "${memberName}"? Ini juga akan menghapus semua transaksi terkait dengan anggota ini.`, () => {
                             deleteMember(docId);
                         });
                     });
@@ -1007,30 +1099,25 @@
                 });
             }
 
-            // Function to populate the "Penyetor / Pengambil" dropdown
-            function populateTransactionWhoDropdown() {
-                const transactionWhoSelect = document.getElementById('transactionWho');
-                transactionWhoSelect.innerHTML = '<option value="">Pilih Anggota (Opsional)</option>'; // Reset and add default option
-                // Sort paymentData alphabetically by nama before populating dropdown
-                const sortedPaymentData = [...paymentData].sort((a, b) => a.nama.localeCompare(b.nama));
-                sortedPaymentData.forEach(member => {
-                    const option = document.createElement('option');
-                    // Only allow 'Admin' for pengeluaran, and other members for both
-                    if (member.nama === 'Admin') {
-                        // For 'Admin', only add if current transaction type is pengeluaran
-                        const transactionType = document.querySelector('input[name="transactionType"]:checked')?.value;
-                        if (transactionType === 'pengeluaran') {
-                            const option = document.createElement('option');
-                            option.value = member.nama;
-                            option.textContent = member.nama;
-                            transactionWhoSelect.appendChild(option);
-                        }
-                    } else {
+            // Function to populate the "Penyetor / Pengambil" dropdowns in both modals
+            function populateTransactionWhoDropdowns(transactionType = 'pemasukan') {
+                const addSelect = document.getElementById('transactionWho');
+                const editSelect = document.getElementById('editTransactionWho');
+                
+                [addSelect, editSelect].forEach(select => {
+                    select.innerHTML = '<option value="">Pilih Anggota (Opsional)</option>'; // Reset and add default option
+                    const sortedPaymentData = [...paymentData].sort((a, b) => a.nama.localeCompare(b.nama));
+                    sortedPaymentData.forEach(member => {
                         const option = document.createElement('option');
                         option.value = member.nama;
                         option.textContent = member.nama;
-                        transactionWhoSelect.appendChild(option);
-                    }
+                        // For 'Admin', only add if current transaction type is pengeluaran
+                        if (member.isSystem && transactionType !== 'pengeluaran') {
+                           // do not add admin
+                        } else {
+                            select.appendChild(option);
+                        }
+                    });
                 });
             }
 
@@ -1061,41 +1148,44 @@
                 endMonthSelect.value = currentMonthName;
             }
 
-            // --- Custom Modal Logic ---
+            // --- MODAL LOGIC ---
+            
+            // Generic function to open a modal
+            function openModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) modal.style.display = 'flex';
+            }
+
+            // Generic function to close a modal
+            function closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) modal.style.display = 'none';
+            }
+            
+            // Confirmation Modal
             const confirmationModal = document.getElementById('confirmationModal');
             const modalMessage = document.getElementById('modalMessage');
             const confirmYesButton = document.getElementById('confirmYes');
             const confirmNoButton = document.getElementById('confirmNo');
-            const closeButton = document.querySelector('#confirmationModal .close-button');
+            const closeConfirmButton = document.querySelector('#confirmationModal .close-button');
             let confirmCallback = null;
 
             function showConfirmationModal(message, callback) {
                 modalMessage.textContent = message;
                 confirmCallback = callback;
-                confirmationModal.style.display = 'flex';
+                openModal('confirmationModal');
             }
-
-            function hideConfirmationModal() {
-                confirmationModal.style.display = 'none';
-                confirmCallback = null;
-            }
-
-            closeButton.addEventListener('click', hideConfirmationModal);
-            confirmNoButton.addEventListener('click', hideConfirmationModal);
+            
+            closeConfirmButton.addEventListener('click', () => closeModal('confirmationModal'));
+            confirmNoButton.addEventListener('click', () => closeModal('confirmationModal'));
             confirmYesButton.addEventListener('click', async () => {
                 if (confirmCallback) {
                     await confirmCallback();
                 }
-                hideConfirmationModal();
+                closeModal('confirmationModal');
             });
 
-            window.addEventListener('click', (event) => {
-                if (event.target === confirmationModal) {
-                    hideConfirmationModal();
-                }
-            });
-
-            // --- Edit Member Modal Logic ---
+            // Edit Member Modal
             const editMemberModal = document.getElementById('editMemberModal');
             const closeEditMemberModalButton = document.getElementById('closeEditMemberModal');
             const editMemberNameInput = document.getElementById('editMemberNameInput');
@@ -1106,32 +1196,59 @@
             function showEditMemberModal(docId, currentName) {
                 currentEditMemberId = docId;
                 editMemberNameInput.value = currentName;
-                editMemberModal.style.display = 'flex';
+                openModal('editMemberModal');
             }
-
-            function hideEditMemberModal() {
-                editMemberModal.style.display = 'none';
-                currentEditMemberId = null;
-                editMemberNameInput.value = '';
-            }
-
-            closeEditMemberModalButton.addEventListener('click', hideEditMemberModal);
-            cancelEditMemberNameButton.addEventListener('click', hideEditMemberModal);
-
+            
+            closeEditMemberModalButton.addEventListener('click', () => closeModal('editMemberModal'));
+            cancelEditMemberNameButton.addEventListener('click', () => closeModal('editMemberModal'));
             saveEditedMemberNameButton.addEventListener('click', () => {
                 const newName = editMemberNameInput.value.trim();
                 if (newName && currentEditMemberId) {
                     editMember(currentEditMemberId, newName);
-                    hideEditMemberModal();
+                    closeModal('editMemberModal');
                 } else {
-                    // Menggunakan modal kustom alih-alih alert()
-                    showConfirmationModal('Nama anggota tidak boleh kosong.', () => {}); // Hanya menampilkan pesan, tidak ada aksi konfirmasi
+                    showConfirmationModal('Nama anggota tidak boleh kosong.', () => {});
                 }
             });
 
+            // NEW: Add Transaction Modal
+            const addTransactionModal = document.getElementById('addTransactionModal');
+            const openAddTransactionModalButton = document.getElementById('openAddTransactionModalButton');
+            const closeAddTransactionModalButton = document.getElementById('closeAddTransactionModal');
+
+            openAddTransactionModalButton.addEventListener('click', () => openModal('addTransactionModal'));
+            closeAddTransactionModalButton.addEventListener('click', () => closeModal('addTransactionModal'));
+
+            // NEW: Edit Transaction Modal
+            const editTransactionModal = document.getElementById('editTransactionModal');
+            const closeEditTransactionModalButton = document.getElementById('closeEditTransactionModal');
+            const cancelEditTransactionButton = document.getElementById('cancelEditTransaction');
+
+            function showEditTransactionModal(transaction) {
+                document.getElementById('editTransactionId').value = transaction.docId;
+                document.getElementById('editTransactionDate').value = transaction.tanggal;
+                document.getElementById('editTransactionDesc').value = transaction.keterangan;
+                
+                const isIncome = transaction.pemasukan > 0;
+                const amount = isIncome ? transaction.pemasukan : transaction.pengeluaran;
+                
+                document.getElementById('editTransactionAmount').value = amount;
+                document.querySelector(`input[name="editTransactionType"][value="pemasukan"]`).checked = isIncome;
+                document.querySelector(`input[name="editTransactionType"][value="pengeluaran"]`).checked = !isIncome;
+                
+                populateTransactionWhoDropdowns(isIncome ? 'pemasukan' : 'pengeluaran');
+                document.getElementById('editTransactionWho').value = transaction.penyetorPengambil || '';
+                
+                openModal('editTransactionModal');
+            }
+            
+            closeEditTransactionModalButton.addEventListener('click', () => closeModal('editTransactionModal'));
+            cancelEditTransactionButton.addEventListener('click', () => closeModal('editTransactionModal'));
+
+            // Close modals if clicked outside
             window.addEventListener('click', (event) => {
-                if (event.target === editMemberModal) {
-                    hideEditMemberModal();
+                if (event.target.classList.contains('modal')) {
+                    event.target.style.display = 'none';
                 }
             });
 
@@ -1144,16 +1261,14 @@
             // Tab switching logic
             const tabTransactions = document.getElementById('tab-transactions');
             const tabPayments = document.getElementById('tab-payments');
-            const tabInputTransaction = document.getElementById('tab-input-transaction');
             const tabMemberManagement = document.getElementById('tab-member-management');
 
             const contentTransactions = document.getElementById('content-transactions');
             const contentPayments = document.getElementById('content-payments');
-            const contentInputTransaction = document.getElementById('content-input-transaction');
             const contentMemberManagement = document.getElementById('content-member-management');
 
-            const allTabs = [tabTransactions, tabPayments, tabInputTransaction, tabMemberManagement];
-            const allContents = [contentTransactions, contentPayments, contentInputTransaction, contentMemberManagement];
+            const allTabs = [tabTransactions, tabPayments, tabMemberManagement];
+            const allContents = [contentTransactions, contentPayments, contentMemberManagement];
 
             function switchTab(activeTabButton, activeContentDiv) {
                 allTabs.forEach(tab => tab.classList.remove('active'));
@@ -1164,10 +1279,9 @@
 
             tabTransactions.addEventListener('click', () => switchTab(tabTransactions, contentTransactions));
             tabPayments.addEventListener('click', () => switchTab(tabPayments, contentPayments));
-            tabInputTransaction.addEventListener('click', () => switchTab(tabInputTransaction, contentInputTransaction));
             tabMemberManagement.addEventListener('click', () => switchTab(tabMemberManagement, contentMemberManagement));
 
-            // Transaction Form Submission
+            // Transaction Form Submission (for ADDING)
             document.getElementById('transactionForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const date = document.getElementById('transactionDate').value;
@@ -1213,9 +1327,41 @@
                 document.getElementById('transactionForm').querySelector('button[type="submit"]').disabled = false;
                 document.getElementById('transactionForm').reset();
                 document.getElementById('transactionDate').valueAsDate = new Date();
-                populateTransactionWhoDropdown(); // Re-populate dropdown just in case
                 populatePaymentPeriodDropdowns(); // Reset new payment period dropdowns
+                closeModal('addTransactionModal');
             });
+
+            // NEW: Transaction Form Submission (for EDITING)
+            document.getElementById('editTransactionForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const docId = document.getElementById('editTransactionId').value;
+                const date = document.getElementById('editTransactionDate').value;
+                const desc = document.getElementById('editTransactionDesc').value;
+                const amount = parseFloat(document.getElementById('editTransactionAmount').value);
+                const type = document.querySelector('input[name="editTransactionType"]:checked').value;
+                const who = document.getElementById('editTransactionWho').value;
+
+                // For simplicity, editing does not support multi-month payments for now.
+                // It will update a single transaction record.
+                const updatedTransaction = {
+                    tanggal: date,
+                    keterangan: desc,
+                    pemasukan: type === 'pemasukan' ? amount : 0,
+                    pengeluaran: type === 'pengeluaran' ? amount : 0,
+                    penyetorPengambil: who || 'Anonim'
+                };
+                
+                const spinner = document.getElementById('editTransactionSpinner');
+                spinner.classList.remove('hidden');
+                document.getElementById('editTransactionForm').querySelector('button[type="submit"]').disabled = true;
+                
+                updateTransaction(docId, updatedTransaction);
+
+                spinner.classList.add('hidden');
+                document.getElementById('editTransactionForm').querySelector('button[type="submit"]').disabled = false;
+                closeModal('editTransactionModal');
+            });
+
 
             // Add Member Button
             document.getElementById('addMemberButton').addEventListener('click', async () => {
@@ -1232,8 +1378,7 @@
                     document.getElementById('addMemberButton').disabled = false;
                     newMemberNameInput.value = '';
                 } else {
-                    // Menggunakan modal kustom alih-alih alert()
-                    showConfirmationModal('Nama anggota tidak boleh kosong.', () => {}); // Hanya menampilkan pesan, tidak ada aksi konfirmasi
+                    showConfirmationModal('Nama anggota tidak boleh kosong.', () => {});
                 }
             });
 
