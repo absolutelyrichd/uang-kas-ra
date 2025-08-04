@@ -519,7 +519,26 @@
             let currentPage = 1;
             const transactionsPerPage = 10;
 
-            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            // --- DYNAMIC MONTHS & YEARS ---
+            // Generate months for the current and next year for payment selection
+            const generatePaymentMonths = () => {
+                const paymentMonthsList = [];
+                const currentYear = new Date().getFullYear();
+                const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                
+                // Add months for the current year
+                for (let i = 0; i < 12; i++) {
+                    paymentMonthsList.push(`${monthNames[i]} ${currentYear}`);
+                }
+                // Add months for the next year
+                for (let i = 0; i < 12; i++) {
+                    paymentMonthsList.push(`${monthNames[i]} ${currentYear + 1}`);
+                }
+                return paymentMonthsList;
+            };
+
+            const paymentMonths = generatePaymentMonths(); // Used for payment periods and status tracking.
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']; // Kept for year-agnostic features like the AI month filter.
 
             const formatCurrency = (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
 
@@ -793,6 +812,7 @@
                 populateTransactionWhoDropdowns(); // Populate dropdowns for both add and edit modals
                 populatePaymentPeriodDropdowns(); // Populate new payment period dropdowns
                 populatePdfMonthCheckboxes(); // Ensure PDF month checkboxes are populated
+                populateAiMonthFilter(); // Populate AI month filter
             }
 
             function calculateKPIs() {
@@ -1059,15 +1079,15 @@
 
                 // Clear and re-populate table headers
                 tableHeader.innerHTML = `<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50 z-10">Nama Anggota</th>`;
-                months.forEach(month => {
-                    tableHeader.innerHTML += `<th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">${month}</th>`;
+                paymentMonths.forEach(monthYear => {
+                    tableHeader.innerHTML += `<th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">${monthYear.replace(' ', '<br>')}</th>`;
                 });
 
                 // Filter out system users like 'Admin' from payment tracking
                 const filteredPaymentData = paymentData.filter(member => !member.isSystem);
 
                 if (filteredPaymentData.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="${months.length + 1}" class="text-center py-4 text-slate-500">Tidak ada anggota terdaftar.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="${paymentMonths.length + 1}" class="text-center py-4 text-slate-500">Tidak ada anggota terdaftar.</td></tr>`;
                     return;
                 }
 
@@ -1076,8 +1096,8 @@
 
                 sortedPaymentData.forEach(member => {
                     let rowHtml = `<tr><td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800 sticky left-0 bg-white">${member.nama}</td>`;
-                    months.forEach(month => {
-                        const status = member.pembayaran[month] || 'Belum';
+                    paymentMonths.forEach(monthYear => {
+                        const status = member.pembayaran[monthYear] || 'Belum';
                         const statusClass = status === 'Lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800';
                         rowHtml += `
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
@@ -1099,8 +1119,8 @@
                     // Only reset for non-system users
                     if (!member.isSystem) {
                         member.pembayaran = {}; // Clear old payments
-                        months.forEach(month => {
-                            member.pembayaran[month] = 'Belum';
+                        paymentMonths.forEach(monthYear => {
+                            member.pembayaran[monthYear] = 'Belum';
                         });
                     }
                 });
@@ -1115,24 +1135,32 @@
                         if (member) {
                             if (transaction.startMonth && transaction.endMonth) {
                                 // Handle multi-month payment
-                                const startIndex = months.indexOf(transaction.startMonth);
-                                const endIndex = months.indexOf(transaction.endMonth);
+                                const startIndex = paymentMonths.indexOf(transaction.startMonth);
+                                const endIndex = paymentMonths.indexOf(transaction.endMonth);
 
                                 if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
                                     for (let i = startIndex; i <= endIndex; i++) {
-                                        member.pembayaran[months[i]] = 'Lunas';
+                                        member.pembayaran[paymentMonths[i]] = 'Lunas';
                                     }
                                 } else {
                                     // Fallback if start/end months are invalid, use transaction month
                                     const transactionDate = new Date(transaction.tanggal);
                                     const transactionMonthName = months[transactionDate.getMonth()];
-                                    member.pembayaran[transactionMonthName] = 'Lunas';
+                                    const transactionYear = transactionDate.getFullYear();
+                                    const transactionMonthYear = `${transactionMonthName} ${transactionYear}`;
+                                    if(member.pembayaran.hasOwnProperty(transactionMonthYear)) {
+                                       member.pembayaran[transactionMonthYear] = 'Lunas';
+                                    }
                                 }
                             } else {
                                 // Original single-month payment logic
                                 const transactionDate = new Date(transaction.tanggal);
                                 const transactionMonthName = months[transactionDate.getMonth()];
-                                member.pembayaran[transactionMonthName] = 'Lunas';
+                                const transactionYear = transactionDate.getFullYear();
+                                const transactionMonthYear = `${transactionMonthName} ${transactionYear}`;
+                                if(member.pembayaran.hasOwnProperty(transactionMonthYear)) {
+                                   member.pembayaran[transactionMonthYear] = 'Lunas';
+                                }
                             }
                         }
                     }
@@ -1214,24 +1242,40 @@
 
                 startMonthSelect.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
                 endMonthSelect.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
+                
+                const currentMonth = months[new Date().getMonth()];
+                const currentYear = new Date().getFullYear();
+                const currentMonthYear = `${currentMonth} ${currentYear}`;
 
-                const currentMonthName = months[new Date().getMonth()];
-
-                months.forEach(month => {
+                paymentMonths.forEach(monthYear => {
                     const optionStart = document.createElement('option');
-                    optionStart.value = month;
-                    optionStart.textContent = month;
+                    optionStart.value = monthYear;
+                    optionStart.textContent = monthYear;
                     startMonthSelect.appendChild(optionStart);
 
                     const optionEnd = document.createElement('option');
-                    optionEnd.value = month;
-                    optionEnd.textContent = month;
+                    optionEnd.value = monthYear;
+                    optionEnd.textContent = monthYear;
                     endMonthSelect.appendChild(optionEnd);
                 });
 
                 // Set default to current month for both
-                startMonthSelect.value = currentMonthName;
-                endMonthSelect.value = currentMonthName;
+                startMonthSelect.value = currentMonthYear;
+                endMonthSelect.value = currentMonthYear;
+            }
+
+            // Function to populate the AI Month Filter Dropdown
+            function populateAiMonthFilter() {
+                const aiMonthFilter = document.getElementById('aiMonthFilter');
+                aiMonthFilter.innerHTML = ''; // Clear existing options
+                const currentYear = new Date().getFullYear();
+                months.forEach(month => {
+                    const option = document.createElement('option');
+                    const monthYear = `${month} ${currentYear}`;
+                    option.value = month; // The value is just the month name, as used in the event listener
+                    option.textContent = monthYear;
+                    aiMonthFilter.appendChild(option);
+                });
             }
 
             // --- MODAL LOGIC ---
@@ -1381,8 +1425,8 @@
                 let actualAmount = amount; // Nominal yang akan dicatat di transaksi
 
                 if (type === 'pemasukan' && startMonth && endMonth) {
-                    const startIndex = months.indexOf(startMonth);
-                    const endIndex = months.indexOf(endMonth);
+                    const startIndex = paymentMonths.indexOf(startMonth);
+                    const endIndex = paymentMonths.indexOf(endMonth);
                     if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
                         const numberOfMonths = endIndex - startIndex + 1;
                         actualAmount = amount * numberOfMonths; // Hitung total nominal
@@ -1657,7 +1701,7 @@
                         // Dynamically set column widths for months based on selectedPdfMonths
                         ...selectedPdfMonths.reduce((acc, monthName, i) => {
                             let width = 15; // Default width
-                            if (['September', 'November', 'Desember'].includes(monthName)) {
+                            if (['September', 'November', 'Desember'].includes(monthName.split(' ')[0])) {
                                 width = 20; // Increased width for these months
                             }
                             acc[i + 1] = { cellWidth: width };
@@ -1795,16 +1839,16 @@
             document.getElementById('generatePaymentReminder').addEventListener('click', async () => {
                 // For the AI reminder, we will now consider all months to find unpaid members
                 let unpaidMembersByMonth = {};
-                months.forEach(month => { // Iterate through all months
-                    unpaidMembersByMonth[month] = paymentData.filter(member =>
-                        !member.isSystem && member.pembayaran[month] === 'Belum'
+                paymentMonths.forEach(monthYear => {
+                    unpaidMembersByMonth[monthYear] = paymentData.filter(member =>
+                        !member.isSystem && member.pembayaran[monthYear] === 'Belum'
                     ).map(member => member.nama);
                 });
 
                 let reminderTextParts = [];
-                for (const month of months) { // Iterate through all months for the reminder text
-                    if (unpaidMembersByMonth[month].length > 0) {
-                        reminderTextParts.push(`anggota berikut yang belum membayar iuran bulan ${month}: ${unpaidMembersByMonth[month].join(', ')}`);
+                for (const monthYear of paymentMonths) {
+                    if (unpaidMembersByMonth[monthYear].length > 0) {
+                        reminderTextParts.push(`anggota berikut yang belum membayar iuran bulan ${monthYear}: ${unpaidMembersByMonth[monthYear].join(', ')}`);
                     }
                 }
 
@@ -1862,12 +1906,12 @@
 
             function populatePdfMonthCheckboxes() {
                 pdfMonthSelectionDiv.innerHTML = '';
-                months.forEach((month, index) => {
+                paymentMonths.forEach((monthYear, index) => {
                     const div = document.createElement('div');
                     div.className = 'flex items-center';
                     div.innerHTML = `
-                        <input type="checkbox" id="pdfMonth-${index}" name="pdfMonth" value="${month}" class="form-checkbox h-4 w-4 text-amber-600 rounded focus:ring-amber-500" checked>
-                        <label for="pdfMonth-${index}" class="ml-2 text-sm text-slate-700">${month}</label>
+                        <input type="checkbox" id="pdfMonth-${index}" name="pdfMonth" value="${monthYear}" class="form-checkbox h-4 w-4 text-amber-600 rounded focus:ring-amber-500" checked>
+                        <label for="pdfMonth-${index}" class="ml-2 text-sm text-slate-700">${monthYear}</label>
                     `;
                     pdfMonthSelectionDiv.appendChild(div);
                 });
