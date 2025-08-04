@@ -101,6 +101,18 @@
             text-decoration: none;
             cursor: pointer;
         }
+        .pagination-button {
+            transition: background-color 0.3s ease;
+        }
+        .pagination-button.active {
+            background-color: #f59e0b;
+            color: white;
+            border-color: #f59e0b;
+        }
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
     <!-- Firebase SDKs - V9 Compatibility (for easier integration with existing code structure) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -208,6 +220,10 @@
                                     <!-- Rows will be inserted by JavaScript -->
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- NEW: Pagination Controls -->
+                        <div id="paginationControls" class="flex justify-between items-center mt-4">
+                            <!-- Pagination will be rendered here by JavaScript -->
                         </div>
                     </div>
 
@@ -498,6 +514,10 @@
             // Global data arrays
             let cashflowData = [];
             let paymentData = []; // This will now store member names and their payment status objects
+            
+            // NEW: Pagination state
+            let currentPage = 1;
+            const transactionsPerPage = 10;
 
             const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
@@ -767,7 +787,7 @@
                 calculateKPIs();
                 renderCashflowChart();
                 renderMonthlyComparisonChart();
-                renderTransactionTable();
+                renderTransactionTable(document.getElementById('transactionSearch').value, currentPage);
                 renderPaymentTable(); // Render payment table with all months
                 renderMemberTable();
                 populateTransactionWhoDropdowns(); // Populate dropdowns for both add and edit modals
@@ -915,20 +935,28 @@
                 });
             }
 
-            function renderTransactionTable(filter = '') {
+            function renderTransactionTable(filter = '', page = 1) {
                 const tableBody = document.getElementById('transactionTableBody');
                 tableBody.innerHTML = '';
+                
+                currentPage = page;
+
                 const filteredData = cashflowData.filter(item =>
                     item.keterangan.toLowerCase().includes(filter.toLowerCase()) ||
                     (item.penyetorPengambil && item.penyetorPengambil.toLowerCase().includes(filter.toLowerCase()))
                 ).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
-                if (filteredData.length === 0) {
+                const startIndex = (page - 1) * transactionsPerPage;
+                const endIndex = page * transactionsPerPage;
+                const paginatedData = filteredData.slice(startIndex, endIndex);
+
+                if (paginatedData.length === 0) {
                     tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-500">Tidak ada data yang cocok.</td></tr>`;
+                    renderPaginationControls(0, page);
                     return;
                 }
 
-                filteredData.forEach(item => {
+                paginatedData.forEach(item => {
                     const row = `
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
@@ -963,7 +991,65 @@
                         }
                     });
                 });
+
+                renderPaginationControls(filteredData.length, page);
             }
+
+            function renderPaginationControls(totalItems, page) {
+                const paginationControls = document.getElementById('paginationControls');
+                paginationControls.innerHTML = '';
+                const totalPages = Math.ceil(totalItems / transactionsPerPage);
+
+                if (totalPages <= 1) return;
+
+                let paginationHTML = `
+                    <span class="text-sm text-slate-700">
+                        Halaman ${page} dari ${totalPages}
+                    </span>
+                    <div class="flex items-center">
+                        <button id="prevPage" class="pagination-button bg-white border border-slate-300 text-slate-700 font-semibold py-1 px-3 rounded-l-lg" ${page === 1 ? 'disabled' : ''}>
+                            Sebelumnya
+                        </button>
+                `;
+
+                // Page numbers logic (simplified for brevity)
+                for (let i = 1; i <= totalPages; i++) {
+                    paginationHTML += `
+                        <button class="pagination-button page-number-button bg-white border-t border-b border-slate-300 text-slate-700 font-semibold py-1 px-3 ${i === page ? 'active' : ''}" data-page="${i}">
+                            ${i}
+                        </button>
+                    `;
+                }
+
+                paginationHTML += `
+                        <button id="nextPage" class="pagination-button bg-white border border-slate-300 text-slate-700 font-semibold py-1 px-3 rounded-r-lg" ${page === totalPages ? 'disabled' : ''}>
+                            Berikutnya
+                        </button>
+                    </div>
+                `;
+
+                paginationControls.innerHTML = paginationHTML;
+
+                document.getElementById('prevPage')?.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        renderTransactionTable(document.getElementById('transactionSearch').value, currentPage - 1);
+                    }
+                });
+
+                document.getElementById('nextPage')?.addEventListener('click', () => {
+                    if (currentPage < totalPages) {
+                        renderTransactionTable(document.getElementById('transactionSearch').value, currentPage + 1);
+                    }
+                });
+
+                document.querySelectorAll('.page-number-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const newPage = parseInt(e.target.dataset.page);
+                        renderTransactionTable(document.getElementById('transactionSearch').value, newPage);
+                    });
+                });
+            }
+
 
             // Modified: renderPaymentTable to display all months as columns
             function renderPaymentTable() {
@@ -1255,7 +1341,7 @@
 
             // --- Event Listeners ---
             document.getElementById('transactionSearch').addEventListener('input', (e) => {
-                renderTransactionTable(e.target.value);
+                renderTransactionTable(e.target.value, 1); // Reset to page 1 on new search
             });
 
             // Tab switching logic
