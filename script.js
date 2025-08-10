@@ -6,6 +6,7 @@
             // NEW: Pagination state
             let currentPage = 1;
             const transactionsPerPage = 10;
+            const iuranPerBulan = 50000; // Define the monthly fee here
 
             // --- DYNAMIC MONTHS & YEARS ---
             // Generate months for the current and next year for payment selection
@@ -955,6 +956,67 @@
                     document.body.classList.remove('overflow-hidden');
                 }
             });
+
+            // NEW: Unpaid Members Modal Logic
+            const unpaidMembersModal = document.getElementById('unpaidMembersModal');
+            const checkUnpaidMembersButton = document.getElementById('checkUnpaidMembersButton');
+            const closeUnpaidMembersModalButton = document.getElementById('closeUnpaidMembersModal');
+
+            checkUnpaidMembersButton.addEventListener('click', renderUnpaidMembersModal);
+            closeUnpaidMembersModalButton.addEventListener('click', () => closeModal('unpaidMembersModal'));
+
+            function renderUnpaidMembersModal() {
+                const unpaidMembersList = document.getElementById('unpaidMembersList');
+                const unpaidMembersMessage = document.getElementById('unpaidMembersMessage');
+                unpaidMembersList.innerHTML = '';
+                
+                // Get the current month and year to only show unpaid months up to now
+                const now = new Date();
+                const currentMonthYear = `${months[now.getMonth()]} ${now.getFullYear()}`;
+                const currentMonthIndex = paymentMonths.indexOf(currentMonthYear);
+
+                const unpaidData = paymentData.filter(member => !member.isSystem).map(member => {
+                    const unpaidMonths = [];
+                    let totalOwed = 0;
+                    
+                    for(let i = 0; i <= currentMonthIndex; i++) {
+                        const monthYear = paymentMonths[i];
+                        if (member.pembayaran[monthYear] === 'Belum') {
+                            unpaidMonths.push(monthYear);
+                            totalOwed += iuranPerBulan;
+                        }
+                    }
+
+                    return {
+                        nama: member.nama,
+                        unpaidMonths: unpaidMonths,
+                        totalOwed: totalOwed
+                    };
+                }).filter(member => member.unpaidMonths.length > 0);
+
+                if (unpaidData.length === 0) {
+                    unpaidMembersMessage.classList.remove('hidden');
+                } else {
+                    unpaidMembersMessage.classList.add('hidden');
+                    unpaidData.forEach(member => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200';
+                        card.innerHTML = `
+                            <h4 class="text-md font-semibold text-slate-900">${member.nama}</h4>
+                            <p class="text-sm text-red-600 mt-1">Total Terutang: ${formatCurrency(member.totalOwed)}</p>
+                            <div class="mt-2">
+                                <p class="text-xs font-medium text-slate-700">Bulan Belum Bayar:</p>
+                                <ul class="list-disc list-inside text-xs text-slate-600">
+                                    ${member.unpaidMonths.map(month => `<li>${month}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                        unpaidMembersList.appendChild(card);
+                    });
+                }
+                
+                openModal('unpaidMembersModal');
+            }
 
 
             // --- Event Listeners ---
