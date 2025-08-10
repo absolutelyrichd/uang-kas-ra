@@ -825,13 +825,22 @@
             // Generic function to open a modal
             function openModal(modalId) {
                 const modal = document.getElementById(modalId);
-                if (modal) modal.style.display = 'flex';
+                if (modal) {
+                    modal.style.display = 'flex';
+                    // Apply blur effect to the body
+                    document.body.style.filter = 'blur(5px)';
+                    document.body.style.transition = 'filter 0.3s ease-in-out';
+                }
             }
 
             // Generic function to close a modal
             function closeModal(modalId) {
                 const modal = document.getElementById(modalId);
-                if (modal) modal.style.display = 'none';
+                if (modal) {
+                    modal.style.display = 'none';
+                    // Remove blur effect from the body
+                    document.body.style.filter = 'none';
+                }
             }
             
             // Confirmation Modal
@@ -937,6 +946,8 @@
             window.addEventListener('click', (event) => {
                 if (event.target.classList.contains('modal')) {
                     event.target.style.display = 'none';
+                    // Remove blur effect
+                    document.body.style.filter = 'none';
                 }
             });
 
