@@ -974,12 +974,23 @@
                 const now = new Date();
                 const currentMonthYear = `${months[now.getMonth()]} ${now.getFullYear()}`;
                 const currentMonthIndex = paymentMonths.indexOf(currentMonthYear);
+                
+                // NEW: Logic to start checking from Juli 2025
+                const startMonthForCheck = 'Juli 2025';
+                const startMonthIndex = paymentMonths.indexOf(startMonthForCheck);
+
+                if (startMonthIndex === -1) {
+                    unpaidMembersMessage.textContent = `Bulan awal untuk pengecekan, ${startMonthForCheck}, tidak ditemukan.`;
+                    unpaidMembersMessage.classList.remove('hidden');
+                    openModal('unpaidMembersModal');
+                    return;
+                }
 
                 const unpaidData = paymentData.filter(member => !member.isSystem).map(member => {
                     const unpaidMonths = [];
                     let totalOwed = 0;
                     
-                    for(let i = 0; i <= currentMonthIndex; i++) {
+                    for(let i = startMonthIndex; i <= currentMonthIndex; i++) {
                         const monthYear = paymentMonths[i];
                         if (member.pembayaran[monthYear] === 'Belum') {
                             unpaidMonths.push(monthYear);
@@ -996,6 +1007,7 @@
 
                 if (unpaidData.length === 0) {
                     unpaidMembersMessage.classList.remove('hidden');
+                    unpaidMembersMessage.textContent = `Tidak ada anggota yang memiliki iuran terutang dari ${startMonthForCheck} hingga sekarang.`;
                 } else {
                     unpaidMembersMessage.classList.add('hidden');
                     unpaidData.forEach(member => {
