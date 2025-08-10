@@ -988,20 +988,20 @@
 
                 const unpaidData = paymentData.filter(member => !member.isSystem).map(member => {
                     const unpaidMonths = [];
-                    let totalOwed = 0;
+                    // let totalOwed = 0; // Removed this line
                     
                     for(let i = startMonthIndex; i <= currentMonthIndex; i++) {
                         const monthYear = paymentMonths[i];
                         if (member.pembayaran[monthYear] === 'Belum') {
                             unpaidMonths.push(monthYear);
-                            totalOwed += iuranPerBulan;
+                            // totalOwed += iuranPerBulan; // Removed this line
                         }
                     }
 
                     return {
                         nama: member.nama,
                         unpaidMonths: unpaidMonths,
-                        totalOwed: totalOwed
+                        // totalOwed: totalOwed // Removed this line
                     };
                 }).filter(member => member.unpaidMonths.length > 0);
 
@@ -1015,7 +1015,6 @@
                         card.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200';
                         card.innerHTML = `
                             <h4 class="text-md font-semibold text-slate-900">${member.nama}</h4>
-                            <p class="text-sm text-red-600 mt-1">Total Terutang: ${formatCurrency(member.totalOwed)}</p>
                             <div class="mt-2">
                                 <p class="text-xs font-medium text-slate-700">Bulan Belum Bayar:</p>
                                 <ul class="list-disc list-inside text-xs text-slate-600">
