@@ -85,6 +85,8 @@
             width: 90%;
             max-width: 600px;
             text-align: left;
+            position: relative; /* Add this to ensure z-index works correctly */
+            z-index: 1001; /* Ensure modal content is above the backdrop blur */
         }
         .modal-content.centered-text {
              text-align: center;
