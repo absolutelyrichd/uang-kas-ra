@@ -215,7 +215,15 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="overflow-x-auto">
+                        
+                        <!-- NEW: Container for transaction cards -->
+                        <div id="transactionCardContainer" class="grid grid-cols-1 gap-4">
+                            <!-- Cards will be inserted by JavaScript -->
+                        </div>
+                        <!-- END NEW -->
+
+                        <!-- OLD: The table is removed -->
+                        <!-- <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-slate-200">
                                 <thead class="bg-slate-50">
                                     <tr>
@@ -227,10 +235,11 @@
                                     </tr>
                                 </thead>
                                 <tbody id="transactionTableBody" class="bg-white divide-y divide-slate-200">
-                                    <!-- Rows will be inserted by JavaScript -->
+                                    Rows will be inserted by JavaScript
                                 </tbody>
                             </table>
-                        </div>
+                        </div> -->
+                        
                         <div id="paginationControls" class="flex justify-between items-center mt-4">
                             <!-- Pagination will be rendered here by JavaScript -->
                         </div>

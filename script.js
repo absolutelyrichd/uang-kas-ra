@@ -294,7 +294,7 @@
                 calculateKPIs();
                 renderCashflowChart();
                 renderMonthlyComparisonChart();
-                renderTransactionTable(document.getElementById('transactionSearch').value, currentPage);
+                renderTransactionCards(document.getElementById('transactionSearch').value, currentPage);
                 renderPaymentTable(); // Render payment table with all months
                 renderMemberTable();
                 populateTransactionWhoDropdowns(); // Populate dropdowns for both add and edit modals
@@ -443,44 +443,97 @@
                 });
             }
 
-            function renderTransactionTable(filter = '', page = 1) {
-                const tableBody = document.getElementById('transactionTableBody');
-                tableBody.innerHTML = '';
+            // NEW: Function to render transactions as cards
+            function renderTransactionCards(filter = '', page = 1) {
+                const cardContainer = document.getElementById('transactionCardContainer');
+                cardContainer.innerHTML = '';
                 
                 currentPage = page;
 
-                const filteredData = cashflowData.filter(item =>
+                const sortedData = [...cashflowData].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+                
+                // Filter data before grouping
+                const filteredData = sortedData.filter(item =>
                     item.keterangan.toLowerCase().includes(filter.toLowerCase()) ||
                     (item.penyetorPengambil && item.penyetorPengambil.toLowerCase().includes(filter.toLowerCase()))
-                ).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+                );
 
-                const startIndex = (page - 1) * transactionsPerPage;
-                const endIndex = page * transactionsPerPage;
-                const paginatedData = filteredData.slice(startIndex, endIndex);
-
-                if (paginatedData.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-500">Tidak ada data yang cocok.</td></tr>`;
+                if (filteredData.length === 0) {
+                    cardContainer.innerHTML = `<div class="p-4 text-center text-slate-500 col-span-full">Tidak ada transaksi yang cocok.</div>`;
                     renderPaginationControls(0, page);
                     return;
                 }
+                
+                // Group transactions by date
+                const groupedByDate = filteredData.reduce((acc, transaction) => {
+                    const date = transaction.tanggal;
+                    if (!acc[date]) {
+                        acc[date] = {
+                            transactions: [],
+                            totalIncome: 0,
+                            totalExpense: 0
+                        };
+                    }
+                    acc[date].transactions.push(transaction);
+                    acc[date].totalIncome += transaction.pemasukan;
+                    acc[date].totalExpense += transaction.pengeluaran;
+                    return acc;
+                }, {});
 
-                paginatedData.forEach(item => {
-                    const row = `
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${item.keterangan} (${item.penyetorPengambil || 'Anonim'})</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-semibold text-right">${item.pemasukan > 0 ? formatCurrency(item.pemasukan) : '-'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold text-right">${item.pengeluaran > 0 ? formatCurrency(item.pengeluaran) : '-'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button data-doc-id="${item.docId}" class="edit-transaction-button text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                <button data-doc-id="${item.docId}" class="delete-transaction-button text-red-600 hover:text-red-900">Hapus</button>
-                            </td>
-                        </tr>
+                const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+
+                const startIndex = (page - 1) * transactionsPerPage;
+                const endIndex = page * transactionsPerPage;
+                const paginatedDates = sortedDates.slice(startIndex, endIndex);
+
+                paginatedDates.forEach(date => {
+                    const dayData = groupedByDate[date];
+                    let transactionsHtml = '';
+
+                    dayData.transactions.forEach(item => {
+                        const amount = item.pemasukan > 0 ? formatCurrency(item.pemasukan) : formatCurrency(item.pengeluaran);
+                        const amountColor = item.pemasukan > 0 ? 'text-emerald-600' : 'text-red-600';
+                        const amountSign = item.pemasukan > 0 ? '+' : '-';
+
+                        transactionsHtml += `
+                            <div class="flex items-center justify-between py-2 border-b last:border-b-0 border-slate-200">
+                                <div class="flex-grow">
+                                    <p class="font-medium text-sm text-slate-800">${item.keterangan} (${item.penyetorPengambil || 'Anonim'})</p>
+                                    <p class="text-xs ${amountColor}">${amountSign} ${amount}</p>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <button data-doc-id="${item.docId}" class="edit-transaction-button text-blue-600 hover:text-blue-900 mr-2 text-sm">Edit</button>
+                                    <button data-doc-id="${item.docId}" class="delete-transaction-button text-red-600 hover:text-red-900 text-sm">Hapus</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    const cardHtml = `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200">
+                                <h4 class="text-md font-semibold text-slate-900">${new Date(date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h4>
+                            </div>
+                            <div class="flex justify-between text-sm mb-2">
+                                <div>
+                                    <span class="font-medium text-slate-500">Pemasukan Harian:</span>
+                                    <span class="font-semibold text-emerald-600">${formatCurrency(dayData.totalIncome)}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-slate-500">Pengeluaran Harian:</span>
+                                    <span class="font-semibold text-red-600">${formatCurrency(dayData.totalExpense)}</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 border-t border-slate-200 pt-4">
+                                <p class="text-sm font-semibold text-slate-700 mb-2">Detail Transaksi:</p>
+                                ${transactionsHtml}
+                            </div>
+                        </div>
                     `;
-                    tableBody.innerHTML += row;
+                    cardContainer.innerHTML += cardHtml;
                 });
 
-                // Attach event listeners after rendering all rows
+                // Attach event listeners to the newly created buttons
                 document.querySelectorAll('.delete-transaction-button').forEach(button => {
                     button.addEventListener('click', (e) => {
                         const docId = e.target.dataset.docId;
@@ -500,7 +553,7 @@
                     });
                 });
 
-                renderPaginationControls(filteredData.length, page);
+                renderPaginationControls(sortedDates.length, page);
             }
 
             function renderPaginationControls(totalItems, page) {
@@ -540,20 +593,20 @@
 
                 document.getElementById('prevPage')?.addEventListener('click', () => {
                     if (currentPage > 1) {
-                        renderTransactionTable(document.getElementById('transactionSearch').value, currentPage - 1);
+                        renderTransactionCards(document.getElementById('transactionSearch').value, currentPage - 1);
                     }
                 });
 
                 document.getElementById('nextPage')?.addEventListener('click', () => {
                     if (currentPage < totalPages) {
-                        renderTransactionTable(document.getElementById('transactionSearch').value, currentPage + 1);
+                        renderTransactionCards(document.getElementById('transactionSearch').value, currentPage + 1);
                     }
                 });
 
                 document.querySelectorAll('.page-number-button').forEach(button => {
                     button.addEventListener('click', (e) => {
                         const newPage = parseInt(e.target.dataset.page);
-                        renderTransactionTable(document.getElementById('transactionSearch').value, newPage);
+                        renderTransactionCards(document.getElementById('transactionSearch').value, newPage);
                     });
                 });
             }
@@ -890,7 +943,7 @@
 
             // --- Event Listeners ---
             document.getElementById('transactionSearch').addEventListener('input', (e) => {
-                renderTransactionTable(e.target.value, 1); // Reset to page 1 on new search
+                renderTransactionCards(e.target.value, 1); // Reset to page 1 on new search
             });
 
             // Tab switching logic
