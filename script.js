@@ -827,9 +827,10 @@
                 const modal = document.getElementById(modalId);
                 if (modal) {
                     modal.style.display = 'flex';
-                    // Apply blur effect to the body
-                    document.body.style.filter = 'blur(5px)';
-                    document.body.style.transition = 'filter 0.3s ease-in-out';
+                    // Apply blur effect to the body, but not the modal itself.
+                    // Instead of body, we'll apply it to the main content container.
+                    document.querySelector('main').classList.add('backdrop-blur-sm');
+                    document.body.classList.add('overflow-hidden'); // To prevent scrolling
                 }
             }
 
@@ -838,8 +839,9 @@
                 const modal = document.getElementById(modalId);
                 if (modal) {
                     modal.style.display = 'none';
-                    // Remove blur effect from the body
-                    document.body.style.filter = 'none';
+                    // Remove blur effect
+                    document.querySelector('main').classList.remove('backdrop-blur-sm');
+                    document.body.classList.remove('overflow-hidden');
                 }
             }
             
@@ -947,7 +949,8 @@
                 if (event.target.classList.contains('modal')) {
                     event.target.style.display = 'none';
                     // Remove blur effect
-                    document.body.style.filter = 'none';
+                    document.querySelector('main').classList.remove('backdrop-blur-sm');
+                    document.body.classList.remove('overflow-hidden');
                 }
             });
 
