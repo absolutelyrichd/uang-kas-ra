@@ -175,7 +175,7 @@
                 </div>
             </section>
 
-            <!-- Section: Detailed Data -->
+            <!-- Section: Detailed Data & Tools Tabs -->
             <section id="details" class="mb-8">
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
                     <div class="border-b border-slate-200">
@@ -189,9 +189,19 @@
                             <button id="tab-member-management" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
                                 Kelola Anggota
                             </button>
+                            <button id="tab-data-management" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
+                                Manajemen Data
+                            </button>
+                            <button id="tab-pdf-settings" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
+                                Pengaturan Laporan PDF
+                            </button>
+                            <button id="tab-ai-insights" class="tab-button px-4 py-2 text-sm font-medium text-slate-600 rounded-lg border-b-2 border-transparent hover:text-amber-600 focus:outline-none">
+                                Insight & Bantuan AI
+                            </button>
                         </nav>
                     </div>
 
+                    <!-- Tab Content for 'Riwayat Transaksi' -->
                     <div id="content-transactions" class="p-4 md:p-6">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                             <div>
@@ -221,12 +231,12 @@
                                 </tbody>
                             </table>
                         </div>
-                        <!-- NEW: Pagination Controls -->
                         <div id="paginationControls" class="flex justify-between items-center mt-4">
                             <!-- Pagination will be rendered here by JavaScript -->
                         </div>
                     </div>
 
+                    <!-- Tab Content for 'Status Pembayaran Anggota' -->
                     <div id="content-payments" class="hidden p-4 md:p-6">
                         <h3 class="text-lg font-semibold mb-1 text-slate-900">Status Pembayaran Iuran Kas</h3>
                         <p class="text-sm text-slate-500 mb-4">Berikut adalah status pembayaran iuran kas per bulan untuk setiap anggota.</p>
@@ -245,9 +255,7 @@
                         </div>
                     </div>
                     
-                    <!-- This div is now hidden and its content moved to a modal -->
-                    <div id="content-input-transaction" class="hidden"></div>
-
+                    <!-- Tab Content for 'Kelola Anggota' -->
                     <div id="content-member-management" class="hidden p-4 md:p-6">
                         <h3 class="text-lg font-semibold mb-1 text-slate-900">Kelola Anggota</h3>
                         <p class="text-sm text-slate-500 mb-4">Tambahkan, edit, atau hapus anggota yang akan membayar uang kas.</p>
@@ -272,95 +280,90 @@
                             </table>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <!-- Section: AI Insights & Assistance -->
-            <section id="ai-insights" class="mb-8">
-                <div class="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h2 class="text-xl font-semibold mb-4 text-slate-900">Insight & Bantuan AI</h2>
-                    <p class="text-sm text-slate-500 mb-4">Manfaatkan kecerdasan buatan untuk mendapatkan analisis pengeluaran dan draf pengingat pembayaran.</p>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Spending Analysis -->
-                        <div>
-                            <h3 class="text-lg font-semibold mb-2 text-slate-900">Analisis Pengeluaran Bulanan</h3>
-                            <p class="text-sm text-slate-500 mb-3">Pilih bulan untuk mendapatkan ringkasan pola pengeluaran utama Anda.</p>
-                            <div class="flex items-center space-x-2 mb-4">
-                                <select id="aiMonthFilter" class="p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
-                                    <!-- Options will be inserted by JavaScript -->
-                                </select>
-                                <button id="generateSpendingAnalysis" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
-                                    Dapatkan Analisis Pengeluaran ✨
-                                    <span id="spendingAnalysisSpinner" class="loading-spinner hidden"></span>
-                                </button>
-                            </div>
-                            <div id="spendingAnalysisOutput" class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-700 min-h-[80px] flex items-center justify-center text-center">
-                                <p class="text-slate-500">Hasil analisis akan muncul di sini.</p>
-                            </div>
-                        </div>
-
-                        <!-- Payment Reminder Draft -->
-                        <div>
-                            <h3 class="text-lg font-semibold mb-2 text-slate-900">Draf Pengingat Pembayaran</h3>
-                            <p class="text-sm text-slate-500 mb-3">Buat draf pesan pengingat untuk anggota yang belum membayar iuran pada bulan yang sedang dipilih di tab "Status Pembayaran".</p>
-                            <button id="generatePaymentReminder" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center mb-4">
-                                Buat Draf Pengingat Pengingat ✨
-                                <span id="paymentReminderSpinner" class="loading-spinner hidden"></span>
+                    
+                    <!-- Tab Content for 'Manajemen Data' -->
+                    <div id="content-data-management" class="hidden p-4 md:p-6">
+                        <h2 class="text-xl font-semibold mb-4 text-slate-900">Manajemen Data</h2>
+                        <p class="text-sm text-slate-500 mb-4">Unduh data Anda sebagai file JSON (backup) atau muat data dari file yang sudah ada.</p>
+                        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                            <button id="downloadDataButton" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
+                                Unduh Data (JSON) 💾
                             </button>
-                            <div id="paymentReminderOutput" class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-700 min-h-[80px] flex items-center justify-center text-center">
-                                <p class="text-slate-500">Draf pesan akan muncul di sini.</p>
+                            <button id="downloadReportButton" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
+                                Unduh Laporan (PDF) 📄
+                            </button>
+                            <input type="file" id="uploadFileInput" accept=".json" class="hidden">
+                            <button id="uploadDataButton" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
+                                Muat Data dari File 📁
+                            </button>
+                            <button id="clearInMemoryDataButton" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
+                                Hapus Semua Data (Firebase) 🗑️
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-2 mb-4">
+                            <label for="autoDownloadInterval" class="text-sm font-medium text-slate-700">Unduh Otomatis Backup Lokal Setiap:</label>
+                            <select id="autoDownloadInterval" class="p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+                                <option value="0" selected>Nonaktif</option> <!-- Default to Nonaktif -->
+                                <option value="1">1 Menit</option>
+                                <option value="5">5 Menit</option>
+                                <option value="10">10 Menit</option>
+                                <option value="30">30 Menit</option>
+                            </select>
+                            <span id="autoDownloadStatus" class="text-sm text-slate-500"></span>
+                        </div>
+                        <p id="dataManagementMessage" class="mt-4 text-sm text-slate-600"></p>
+                    </div>
+
+                    <!-- Tab Content for 'Pengaturan Laporan PDF' -->
+                    <div id="content-pdf-settings" class="hidden p-4 md:p-6">
+                        <h2 class="text-xl font-semibold mb-4 text-slate-900">Pengaturan Laporan PDF</h2>
+                        <p class="text-sm text-slate-500 mb-4">Pilih bulan-bulan yang ingin Anda sertakan dalam bagian "Rincian Perbulan" pada laporan PDF.</p>
+                        <div id="pdfMonthSelection" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                            <!-- Month checkboxes will be generated here by JavaScript -->
+                        </div>
+                        <button id="selectAllPdfMonths" class="mt-4 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-1 px-3 rounded-lg text-sm transition duration-300 ease-in-out">Pilih Semua</button>
+                        <button id="clearAllPdfMonths" class="mt-4 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-1 px-3 rounded-lg text-sm transition duration-300 ease-in-out ml-2">Hapus Pilihan</button>
+                    </div>
+
+                    <!-- Tab Content for 'Insight & Bantuan AI' -->
+                    <div id="content-ai-insights" class="hidden p-4 md:p-6">
+                        <h2 class="text-xl font-semibold mb-4 text-slate-900">Insight & Bantuan AI</h2>
+                        <p class="text-sm text-slate-500 mb-4">Manfaatkan kecerdasan buatan untuk mendapatkan analisis pengeluaran dan draf pengingat pembayaran.</p>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Spending Analysis -->
+                            <div>
+                                <h3 class="text-lg font-semibold mb-2 text-slate-900">Analisis Pengeluaran Bulanan</h3>
+                                <p class="text-sm text-slate-500 mb-3">Pilih bulan untuk mendapatkan ringkasan pola pengeluaran utama Anda.</p>
+                                <div class="flex items-center space-x-2 mb-4">
+                                    <select id="aiMonthFilter" class="p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+                                        <!-- Options will be inserted by JavaScript -->
+                                    </select>
+                                    <button id="generateSpendingAnalysis" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
+                                        Dapatkan Analisis Pengeluaran ✨
+                                        <span id="spendingAnalysisSpinner" class="loading-spinner hidden"></span>
+                                    </button>
+                                </div>
+                                <div id="spendingAnalysisOutput" class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-700 min-h-[80px] flex items-center justify-center text-center">
+                                    <p class="text-slate-500">Hasil analisis akan muncul di sini.</p>
+                                </div>
+                            </div>
+                            <!-- Payment Reminder Draft -->
+                            <div>
+                                <h3 class="text-lg font-semibold mb-2 text-slate-900">Draf Pengingat Pembayaran</h3>
+                                <p class="text-sm text-slate-500 mb-3">Buat draf pesan pengingat untuk anggota yang belum membayar iuran pada bulan yang sedang dipilih di tab "Status Pembayaran".</p>
+                                <button id="generatePaymentReminder" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center mb-4">
+                                    Buat Draf Pengingat Pengingat ✨
+                                    <span id="paymentReminderSpinner" class="loading-spinner hidden"></span>
+                                </button>
+                                <div id="paymentReminderOutput" class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-700 min-h-[80px] flex items-center justify-center text-center">
+                                    <p class="text-slate-500">Draf pesan akan muncul di sini.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            <!-- Section: PDF Report Settings -->
-            <section id="pdf-settings" class="mb-8">
-                <div class="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h2 class="text-xl font-semibold mb-4 text-slate-900">Pengaturan Laporan PDF</h2>
-                    <p class="text-sm text-slate-500 mb-4">Pilih bulan-bulan yang ingin Anda sertakan dalam bagian "Rincian Perbulan" pada laporan PDF.</p>
-                    <div id="pdfMonthSelection" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        <!-- Month checkboxes will be generated here by JavaScript -->
-                    </div>
-                    <button id="selectAllPdfMonths" class="mt-4 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-1 px-3 rounded-lg text-sm transition duration-300 ease-in-out">Pilih Semua</button>
-                    <button id="clearAllPdfMonths" class="mt-4 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-1 px-3 rounded-lg text-sm transition duration-300 ease-in-out ml-2">Hapus Pilihan</button>
-                </div>
-            </section>
-
-            <!-- Section: Data Management -->
-            <section id="data-management" class="mb-8">
-                <div class="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h2 class="text-xl font-semibold mb-4 text-slate-900">Manajemen Data</h2>
-                    <p class="text-sm text-slate-500 mb-4">Unduh data Anda sebagai file JSON (backup) atau muat data dari file yang sudah ada.</p>
-                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                        <button id="downloadDataButton" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
-                            Unduh Data (JSON) 💾
-                        </button>
-                        <button id="downloadReportButton" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
-                            Unduh Laporan (PDF) 📄
-                        </button>
-                        <input type="file" id="uploadFileInput" accept=".json" class="hidden">
-                        <button id="uploadDataButton" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
-                            Muat Data dari File 📁
-                        </button>
-                        <button id="clearInMemoryDataButton" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center justify-center">
-                            Hapus Semua Data (Firebase) 🗑️
-                        </button>
-                    </div>
-                    <div class="flex items-center space-x-2 mb-4">
-                        <label for="autoDownloadInterval" class="text-sm font-medium text-slate-700">Unduh Otomatis Backup Lokal Setiap:</label>
-                        <select id="autoDownloadInterval" class="p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
-                            <option value="0" selected>Nonaktif</option> <!-- Default to Nonaktif -->
-                            <option value="1">1 Menit</option>
-                            <option value="5">5 Menit</option>
-                            <option value="10">10 Menit</option>
-                            <option value="30">30 Menit</option>
-                        </select>
-                        <span id="autoDownloadStatus" class="text-sm text-slate-500"></span>
-                    </div>
-                    <p id="dataManagementMessage" class="mt-4 text-sm text-slate-600"></p>
+                    <!-- Hidden divs for Modals -->
+                    <div id="content-input-transaction" class="hidden"></div>
                 </div>
             </section>
         </main>

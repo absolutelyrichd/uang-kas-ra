@@ -897,13 +897,19 @@
             const tabTransactions = document.getElementById('tab-transactions');
             const tabPayments = document.getElementById('tab-payments');
             const tabMemberManagement = document.getElementById('tab-member-management');
+            const tabDataManagement = document.getElementById('tab-data-management');
+            const tabAiInsights = document.getElementById('tab-ai-insights');
+            const tabPdfSettings = document.getElementById('tab-pdf-settings');
 
             const contentTransactions = document.getElementById('content-transactions');
             const contentPayments = document.getElementById('content-payments');
             const contentMemberManagement = document.getElementById('content-member-management');
+            const contentDataManagement = document.getElementById('content-data-management');
+            const contentAiInsights = document.getElementById('content-ai-insights');
+            const contentPdfSettings = document.getElementById('content-pdf-settings');
 
-            const allTabs = [tabTransactions, tabPayments, tabMemberManagement];
-            const allContents = [contentTransactions, contentPayments, contentMemberManagement];
+            const allTabs = [tabTransactions, tabPayments, tabMemberManagement, tabDataManagement, tabAiInsights, tabPdfSettings];
+            const allContents = [contentTransactions, contentPayments, contentMemberManagement, contentDataManagement, contentAiInsights, contentPdfSettings];
 
             function switchTab(activeTabButton, activeContentDiv) {
                 allTabs.forEach(tab => tab.classList.remove('active'));
@@ -912,9 +918,15 @@
                 activeContentDiv.classList.remove('hidden');
             }
 
+            // Set a default tab to be active on load
+            switchTab(tabTransactions, contentTransactions);
+
             tabTransactions.addEventListener('click', () => switchTab(tabTransactions, contentTransactions));
             tabPayments.addEventListener('click', () => switchTab(tabPayments, contentPayments));
             tabMemberManagement.addEventListener('click', () => switchTab(tabMemberManagement, contentMemberManagement));
+            tabDataManagement.addEventListener('click', () => switchTab(tabDataManagement, contentDataManagement));
+            tabAiInsights.addEventListener('click', () => switchTab(tabAiInsights, contentAiInsights));
+            tabPdfSettings.addEventListener('click', () => switchTab(tabPdfSettings, contentPdfSettings));
 
             // Transaction Form Submission (for ADDING)
             document.getElementById('transactionForm').addEventListener('submit', async (e) => {
@@ -1036,227 +1048,14 @@
 
             // Data Management Buttons
             document.getElementById('downloadDataButton').addEventListener('click', downloadDataAsJson);
-
-            // New: Download Report Button
             document.getElementById('downloadReportButton').addEventListener('click', () => {
                 generatePdfReport();
                 document.getElementById('dataManagementMessage').textContent = 'Laporan berhasil diunduh sebagai laporan_uang_kas.pdf';
             });
-
-            // Function to generate the PDF report
-            function generatePdfReport() {
-                // Initialize jsPDF with landscape orientation
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('landscape'); // Changed to landscape
-                let yPos = 20;
-                const margin = 20;
-                const lineHeight = 7;
-
-                // Define colors based on Tailwind palette
-                const colorSlate900 = [15, 23, 42];
-                const colorSlate500 = [100, 116, 139];
-                const colorSlate800 = [30, 41, 59]; // Added for general text
-                const colorSlate200 = [226, 232, 240]; // Added for table lines
-                const colorEmerald600 = [5, 150, 105];
-                const colorRed600 = [220, 38, 38];
-                const colorAmber500 = [245, 158, 11];
-                const colorSlate50 = [248, 250, 252];
-                const colorWhite = [255, 255, 255];
-
-                // Set default font size for the entire report
-                const defaultFontSize = 11; // Increased by one level
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(defaultFontSize);
-                doc.setTextColor(colorSlate800[0], colorSlate800[1], colorSlate800[2]);
-
-                // Title
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(20); // Slightly larger for title (increased by one level)
-                doc.setTextColor(colorSlate900[0], colorSlate900[1], colorSlate900[2]);
-                doc.text("Laporan Uang Kas RA Tarbiyatul Aulad", doc.internal.pageSize.width / 2, yPos, { align: "center" });
-                yPos += lineHeight * 2;
-
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(defaultFontSize); // Revert to default
-                doc.setTextColor(colorSlate500[0], colorSlate500[1], colorSlate500[2]);
-                doc.text(`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID')}`, doc.internal.pageSize.width / 2, yPos, { align: "center" });
-                yPos += lineHeight * 3; // More space after header
-
-                // Section: Financial Summary (KPIs)
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(16); // Slightly larger for section titles (increased by one level)
-                doc.setTextColor(colorSlate900[0], colorSlate900[1], colorSlate900[2]);
-                doc.text("Ringkasan", margin, yPos);
-                yPos += lineHeight;
-                doc.setFont("helvetica", "bold"); // Make these bold
-                doc.setFontSize(defaultFontSize); // Revert to default
-                doc.setTextColor(colorSlate900[0], colorSlate900[1], colorSlate900[2]);
-
-                const currentBalanceValue = cashflowData.reduce((acc, item) => acc + item.pemasukan - item.pengeluaran, 0);
-                const totalIncomeValue = cashflowData.reduce((acc, item) => acc + item.pemasukan, 0);
-                const totalExpenseValue = cashflowData.reduce((acc, item) => acc + item.pengeluaran, 0);
-
-                doc.text(`Saldo Saat Ini    : ${formatCurrency(currentBalanceValue)}`, margin, yPos);
-                yPos += lineHeight;
-                
-                doc.setTextColor(colorEmerald600[0], colorEmerald600[1], colorEmerald600[2]); // Green for Pemasukan
-                doc.text(`Total Pemasukan   : ${formatCurrency(totalIncomeValue)}`, margin, yPos);
-                yPos += lineHeight;
-
-                doc.setTextColor(colorRed600[0], colorRed600[1], colorRed600[2]); // Red for Pengeluaran
-                doc.text(`Total Pengeluaran : ${formatCurrency(totalExpenseValue)}`, margin, yPos);
-                yPos += lineHeight * 2;
-
-                // Reset color to default for next sections
-                doc.setTextColor(colorSlate800[0], colorSlate800[1], colorSlate800[2]);
-                doc.setFont("helvetica", "normal");
-
-                // Section: Transaction Details (using autoTable)
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(16); // Slightly larger for section titles (increased by one level)
-                doc.setTextColor(colorSlate900[0], colorSlate900[1], colorSlate900[2]);
-                doc.text("Detail Semua Transaksi", margin, yPos);
-                yPos += lineHeight;
-
-                const transactionHeaders = [
-                    { header: "Tanggal", dataKey: "tanggal" },
-                    { header: "Keterangan", dataKey: "keterangan" },
-                    { header: "Pemasukan", dataKey: "pemasukan" },
-                    { header: "Pengeluaran", dataKey: "pengeluaran" }
-                ];
-
-                const transactionRows = cashflowData.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal)).map(item => ({
-                    tanggal: new Date(item.tanggal).toLocaleDateString('id-ID'),
-                    keterangan: `${item.keterangan} (${item.penyetorPengambil || 'Anonim'})`,
-                    pemasukan: item.pemasukan > 0 ? formatCurrency(item.pemasukan) : '-',
-                    pengeluaran: item.pengeluaran > 0 ? formatCurrency(item.pengeluaran) : '-'
-                }));
-
-                doc.autoTable({
-                    startY: yPos,
-                    head: [transactionHeaders.map(h => h.header)],
-                    body: transactionRows.map(row => Object.values(row)),
-                    theme: 'grid', // 'striped', 'grid', 'plain'
-                    styles: {
-                        font: 'helvetica',
-                        fontSize: defaultFontSize, // Use default font size
-                        cellPadding: 2,
-                        textColor: colorSlate800,
-                        lineColor: colorSlate200,
-                        lineWidth: 0.1,
-                    },
-                    headStyles: {
-                        fillColor: colorSlate50, // Background for header
-                        textColor: colorSlate500, // Text color for header
-                        fontStyle: 'bold',
-                        halign: 'left',
-                    },
-                    bodyStyles: {
-                        halign: 'left',
-                    },
-                    columnStyles: {
-                        0: { cellWidth: 30 }, // Tanggal
-                        1: { cellWidth: 80 }, // Keterangan
-                        2: { halign: 'right', cellWidth: 40, textColor: colorEmerald600 }, // Pemasukan
-                        3: { halign: 'right', cellWidth: 40, textColor: colorRed600 }, // Pengeluaran
-                    },
-                    margin: { left: margin, right: margin },
-                    didDrawPage: function(data) {
-                        yPos = data.cursor.y; // Update yPos after table
-                    }
-                });
-                yPos = doc.autoTable.previous.finalY + lineHeight; // Update yPos after table
-
-                // Section: Payment Status (Rincian Perbulan)
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(16); // Slightly larger for section titles (increased by one level)
-                doc.setTextColor(colorSlate900[0], colorSlate900[1], colorSlate900[2]);
-                doc.text("Rincian Perbulan", margin, yPos);
-                yPos += lineHeight;
-
-                // Get selected months for the PDF report
-                const selectedPdfMonths = Array.from(document.querySelectorAll('#pdfMonthSelection input[name="pdfMonth"]:checked'))
-                                     .map(checkbox => checkbox.value);
-
-                // Prepare data for the monthly payment status table
-                const monthlyPaymentHeaders = [{ header: "Nama Anggota", dataKey: "nama" }];
-                selectedPdfMonths.forEach(month => { // Use selectedPdfMonths here
-                    monthlyPaymentHeaders.push({ header: month, dataKey: month });
-                });
-
-                // Sort paymentData alphabetically by nama for the PDF report as well, and filter out system users
-                const sortedMonthlyPaymentRows = [...paymentData]
-                    .filter(member => !member.isSystem) // Exclude system users from this table
-                    .sort((a, b) => a.nama.localeCompare(b.nama))
-                    .map(member => {
-                        const row = { nama: member.nama };
-                        selectedPdfMonths.forEach(month => { // Use selectedPdfMonths here
-                            row[month] = member.pembayaran[month] || 'Belum';
-                        });
-                        return row;
-                    });
-
-                doc.autoTable({
-                    startY: yPos,
-                    head: [monthlyPaymentHeaders.map(h => h.header)],
-                    body: sortedMonthlyPaymentRows.map(row => Object.values(row)),
-                    theme: 'grid',
-                    styles: {
-                        font: 'helvetica',
-                        fontSize: 9, // Keep this font size as requested
-                        cellPadding: 1, // Smaller padding for more compact table
-                        textColor: colorSlate800,
-                        lineColor: colorSlate200,
-                        lineWidth: 0.1,
-                    },
-                    headStyles: {
-                        fillColor: colorSlate50,
-                        textColor: colorSlate500,
-                        fontStyle: 'bold',
-                        halign: 'center', // Center align headers
-                    },
-                    bodyStyles: {
-                        halign: 'center', // Center align body cells
-                    },
-                    columnStyles: {
-                        0: { halign: 'left', cellWidth: 40 }, // Nama Anggota
-                        // Dynamically set column widths for months based on selectedPdfMonths
-                        ...selectedPdfMonths.reduce((acc, monthName, i) => {
-                            let width = 15; // Default width
-                            if (['September', 'November', 'Desember'].includes(monthName.split(' ')[0])) {
-                                width = 20; // Increased width for these months
-                            }
-                            acc[i + 1] = { cellWidth: width };
-                            return acc;
-                        }, {})
-                    },
-                    margin: { left: margin, right: margin },
-                    didDrawPage: function(data) {
-                        yPos = data.cursor.y; // Update yPos after table
-                    },
-                    didParseCell: function (data) {
-                        // Apply color to status cells
-                        if (data.section === 'body' && data.column.index > 0) { // Check if it's a month column
-                            const status = data.cell.raw;
-                            if (status === 'Lunas') {
-                                data.cell.styles.textColor = colorEmerald600;
-                            } else if (status === 'Belum') {
-                                data.cell.styles.textColor = colorRed600;
-                            }
-                        }
-                    }
-                });
-                yPos = doc.autoTable.previous.finalY + lineHeight; // Update yPos after table
-
-                doc.save("laporan_uang_kas.pdf");
-            }
-
-
             document.getElementById('uploadDataButton').addEventListener('click', () => {
                 document.getElementById('uploadFileInput').click();
             });
             document.getElementById('uploadFileInput').addEventListener('change', loadDataFromFile);
-
             document.getElementById('clearInMemoryDataButton').addEventListener('click', clearInMemoryData); // Call clearInMemoryData (now clears Firebase)
 
             // Auto Download Setting (for local backup only)
@@ -1453,9 +1252,6 @@
 
             // Call this on initial load
             populatePdfMonthCheckboxes();
-
-            // Initial render of UI. Data will be loaded via Firebase onAuthStateChanged.
             renderAllUI();
-            // Set auto download to nonaktif by default
             startAutoDownload(0);
         });
