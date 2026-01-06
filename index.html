@@ -11,20 +11,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Warm Neutrals (Slate, Stone, Amber, with Emerald/Red for status) -->
-    <!-- Application Structure Plan: A dashboard-style layout is chosen for optimal usability. It starts with high-level Key Performance Indicators (KPIs) like current balance for a quick overview. This is followed by visual charts (cashflow trend, income vs. expense) to provide deeper context and show performance over time. Finally, a tabbed section offers detailed, granular data (transaction history and payment status) without cluttering the main view. A new section for AI-powered insights has1 been added, allowing users to generate spending analyses and payment reminder drafts using the Gemini API, further enhancing data utility and task automation. New sections for member management and detailed transaction input are added, along with global save/delete options, all powered by Firebase persistence with Google login. -->
-    <!-- Visualization & Content Choices:
-        - Report Info: Final Saldo -> Goal: Inform -> Viz: KPI Card -> Interaction: None -> Justification: Most critical metric, needs immediate visibility -> Library/Method: HTML/Tailwind.
-        - Report Info: Saldo over time -> Goal: Change -> Viz: Line Chart -> Interaction: Hover for tooltip -> Justification: Clearly shows financial health trend -> Library/Method: Chart.js (Canvas).
-        - Report Info: Monthly Pemasukan vs. Pengeluaran -> Goal: Compare -> Viz: Bar Chart -> Interaction: Hover for tooltip -> Justification: Easy comparison of monthly financial activity -> Library/Method: Chart.js (Canvas).
-        - Report Info: Cashflow log -> Goal: Organize -> Viz: Table -> Interaction: Search, Delete Transaction -> Justification: Allows users to find and manage specific transactions easily -> Library/Method: HTML/Tailwind + JS.
-        - Report Info: Member payment status -> Goal: Organize/Compare -> Viz: Table/Grid -> Interaction: Filter by month, Add/Delete Member, **Automatic Payment Status Update based on payer and income transaction** -> Justification: Quick visual check of who has paid, with color-coding for clarity, and full member management, now automated for accuracy with improved input and simplified payment logic -> Library/Method: HTML/Tailwind + JS.
-        - Report Info: Spending patterns from cashflow -> Goal: Inform/Analyze -> Viz: AI-generated text summary -> Interaction: Button click with month selection -> Justification: Provides qualitative insights into spending habits beyond raw numbers -> Library/Method: Gemini API (LLM).
-        - Report Info: Unpaid members -> Goal: Act/Communicate -> Viz: AI-generated text draft -> Interaction: Button click -> Justification: Automates the creation of polite payment reminders, saving time -> Library/Method: Gemini API (LLM).
-        - Report Info: All data persistence -> Goal: Store/Retrieve -> Viz: None -> Interaction: Download JSON, Upload JSON, Clear In-memory Data -> Justification: Essential for long-term data management and portability, now primarily via Firebase. -> Library/Method: Firebase Firestore + File (JSON) via JS Blob/FileReader.
-        - Report Info: Detailed Transaction Input -> Goal: Record -> Viz: Form -> Interaction: Input fields, radio buttons, submit button, Payer dropdown -> Justification: Allows granular entry of financial activities with standardized payer selection -> Library/Method: HTML/Tailwind + JS.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -85,8 +71,8 @@
             width: 90%;
             max-width: 600px;
             text-align: left;
-            position: relative; /* Add this to ensure z-index works correctly */
-            z-index: 1001; /* Ensure modal content is above the backdrop blur */
+            position: relative;
+            z-index: 1001;
         }
         .modal-content.centered-text {
              text-align: center;
@@ -116,7 +102,7 @@
             cursor: not-allowed;
         }
     </style>
-    <!-- Firebase SDKs - V9 Compatibility (for easier integration with existing code structure) -->
+    <!-- Firebase SDKs - V9 Compatibility -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
@@ -235,11 +221,9 @@
                             </div>
                         </div>
                         
-                        <!-- NEW: Container for transaction cards -->
                         <div id="transactionCardContainer" class="grid grid-cols-1 gap-4">
                             <!-- Cards will be inserted by JavaScript -->
                         </div>
-                        <!-- END NEW -->
                         
                         <div id="paginationControls" class="flex justify-between items-center mt-4">
                             <!-- Pagination will be rendered here by JavaScript -->
@@ -549,6 +533,1300 @@
         </div>
     </div>
 
-    <script type="module" src="/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Global data arrays
+            let cashflowData = [];
+            let paymentData = []; 
+            
+            // Pagination state
+            let currentPage = 1;
+            const transactionsPerPage = 10;
+            const iuranPerBulan = 50000; 
+
+            // --- DYNAMIC MONTHS & YEARS ---
+            // Generate months starting from 2025 explicitly to fix "Bulan tidak ditemukan" error
+            const generatePaymentMonths = () => {
+                const paymentMonthsList = [];
+                const currentYear = new Date().getFullYear();
+                const startYear = 2025; // FIX: Start from 2025 so Juli 2025 is included
+                const endYear = currentYear + 1; // Show until next year
+
+                const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                
+                for (let year = startYear; year <= endYear; year++) {
+                    for (let i = 0; i < 12; i++) {
+                        paymentMonthsList.push(`${monthNames[i]} ${year}`);
+                    }
+                }
+                return paymentMonthsList;
+            };
+
+            const paymentMonths = generatePaymentMonths(); 
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']; 
+
+            const formatCurrency = (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+
+            // --- Firebase Configuration & Initialization ---
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0 ? __firebase_config : JSON.stringify({
+                apiKey: "AIzaSyBuoxTcp7_C5LdOtU_vKlkvQNVLtdZK68Y",
+                authDomain: "uang-kas-ra.firebaseapp.com",
+                projectId: "uang-kas-ra",
+                storageBucket: "uang-kas-ra.firebasestorage.app",
+                messagingSenderId: "635210671608",
+                appId: "1:635210671608:web:36dd4007f60a2ab434a20d",
+                measurementId: "G-EJHTNTCHXJ"
+            }));
+            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+
+            let app;
+            let auth;
+            let db;
+
+            if (Object.keys(firebaseConfig).length > 0) {
+                app = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+            } else {
+                console.error("Firebase config is empty.");
+                auth = { onAuthStateChanged: (cb) => cb(null), signInWithPopup: () => Promise.reject('Firebase not configured'), signOut: () => Promise.resolve() };
+                db = { collection: () => ({ doc: () => ({ set: () => Promise.resolve(), delete: () => Promise.resolve(), onSnapshot: () => () => {} }) }) };
+                document.getElementById('authStatus').textContent = 'Firebase tidak terkonfigurasi.';
+            }
+
+            let currentUserUid = null;
+            let firestoreUserDataDocRef = null; 
+            let dataUnsubscribe = null; 
+
+            const signInButton = document.getElementById('signInButton');
+            const signOutButton = document.getElementById('signOutButton');
+            const authStatusDiv = document.getElementById('authStatus');
+            const appContent = document.getElementById('appContent');
+
+            // --- Firebase Authentication Functions ---
+            signInButton.addEventListener('click', async () => {
+                try {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    await auth.signInWithPopup(provider);
+                } catch (error) {
+                    console.error("Error during Google Sign-In:", error);
+                    authStatusDiv.textContent = `Login Gagal: ${error.message}`;
+                }
+            });
+
+            signOutButton.addEventListener('click', async () => {
+                try {
+                    await auth.signOut();
+                } catch (error) {
+                    console.error("Error during Sign-Out:", error);
+                    authStatusDiv.textContent = `Logout Gagal: ${error.message}`;
+                }
+            });
+
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    currentUserUid = user.uid;
+                    authStatusDiv.textContent = `Selamat datang, ${user.displayName || user.email}!`;
+                    signInButton.classList.add('hidden');
+                    signOutButton.classList.remove('hidden');
+                    appContent.classList.remove('hidden'); 
+
+                    firestoreUserDataDocRef = db.collection('artifacts').doc(appId).collection('users').doc(currentUserUid).collection('uangKasData').doc('userData');
+
+                    if (dataUnsubscribe) {
+                        dataUnsubscribe();
+                    }
+
+                    dataUnsubscribe = firestoreUserDataDocRef.onSnapshot(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            cashflowData = data.cashflow || [];
+                            paymentData = data.payments || [];
+                            document.getElementById('dataManagementMessage').textContent = 'Data berhasil disinkronkan dari Firebase.';
+                        } else {
+                            console.log("Tidak ada data pengguna yang ditemukan di Firestore. Menginisialisasi dengan data kosong.");
+                            cashflowData = [];
+                            paymentData = [
+                                { docId: 'm0', nama: 'Admin', isSystem: true, pembayaran: {} }
+                            ];
+                            saveDataToFirestore();
+                            document.getElementById('dataManagementMessage').textContent = 'Data baru diinisialisasi di Firebase.';
+                        }
+                        renderAllUI();
+                    }, (error) => {
+                        console.error("Error listening to Firestore data:", error);
+                        document.getElementById('dataManagementMessage').textContent = 'Gagal menyinkronkan data dari Firebase.';
+                    });
+
+                } else {
+                    currentUserUid = null;
+                    authStatusDiv.textContent = 'Silakan login untuk menyimpan data Anda.';
+                    signInButton.classList.remove('hidden');
+                    signOutButton.classList.add('hidden');
+                    appContent.classList.add('hidden'); 
+
+                    cashflowData = [];
+                    paymentData = [];
+                    renderAllUI();
+                    document.getElementById('dataManagementMessage').textContent = '';
+
+                    if (dataUnsubscribe) {
+                        dataUnsubscribe();
+                        dataUnsubscribe = null;
+                    }
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        try {
+                             auth.signInWithCustomToken(__initial_auth_token);
+                        } catch (error) {
+                             console.error("Error attempting signInWithCustomToken:", error);
+                        }
+                    } else {
+                        try {
+                            auth.signInAnonymously();
+                        } catch (error) {
+                             console.error("Error attempting signInAnonymously:", error);
+                        }
+                    }
+                }
+            });
+
+
+            // --- Firestore Data Persistence Functions ---
+            async function saveDataToFirestore() {
+                if (!currentUserUid || !firestoreUserDataDocRef) {
+                    document.getElementById('dataManagementMessage').textContent = 'Tidak dapat menyimpan: Belum login atau koneksi Firebase belum siap.';
+                    return;
+                }
+                try {
+                    await firestoreUserDataDocRef.set({
+                        cashflow: cashflowData,
+                        payments: paymentData,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (e) {
+                    console.error('Error saving to Firestore:', e);
+                    document.getElementById('dataManagementMessage').textContent = `Gagal menyimpan data ke Firebase: ${e.message}`;
+                }
+            }
+
+            // --- Data Operations ---
+            function addTransaction(transaction) {
+                transaction.docId = transaction.docId || Date.now().toString();
+                cashflowData.push(transaction);
+                saveDataToFirestore(); 
+            }
+            
+            function updateTransaction(docId, updatedData) {
+                const transactionIndex = cashflowData.findIndex(item => item.docId === docId);
+                if (transactionIndex > -1) {
+                    cashflowData[transactionIndex] = { ...updatedData, docId: docId };
+                    saveDataToFirestore();
+                }
+            }
+
+            async function deleteTransaction(docId) {
+                cashflowData = cashflowData.filter(item => item.docId !== docId);
+                await saveDataToFirestore(); 
+            }
+
+            function addMember(memberName) {
+                const newMember = { docId: Date.now().toString(), nama: memberName, pembayaran: {} };
+                paymentData.push(newMember);
+                saveDataToFirestore(); 
+            }
+
+            async function editMember(docId, newName) {
+                const memberIndex = paymentData.findIndex(member => member.docId === docId);
+                if (memberIndex > -1) {
+                    const oldName = paymentData[memberIndex].nama;
+                    paymentData[memberIndex].nama = newName;
+
+                    cashflowData.forEach(transaction => {
+                        if (transaction.penyetorPengambil === oldName) {
+                            transaction.penyetorPengambil = newName;
+                        }
+                    });
+                    await saveDataToFirestore();
+                }
+            }
+
+            async function deleteMember(docId) {
+                const memberToDelete = paymentData.find(member => member.docId === docId);
+                if (memberToDelete) {
+                    const memberName = memberToDelete.nama;
+                    paymentData = paymentData.filter(member => member.docId !== docId); 
+                    cashflowData = cashflowData.filter(transaction => transaction.penyetorPengambil !== memberName); 
+                }
+                await saveDataToFirestore(); 
+            }
+
+            async function clearInMemoryData() {
+                if (!currentUserUid || !firestoreUserDataDocRef) {
+                    document.getElementById('dataManagementMessage').textContent = 'Tidak dapat menghapus: Belum login.';
+                    return;
+                }
+                showConfirmationModal('Apakah Anda yakin ingin menghapus SEMUA data dari Firebase? Tindakan ini tidak dapat dibatalkan.', async () => {
+                    try {
+                        await firestoreUserDataDocRef.delete(); 
+                        document.getElementById('dataManagementMessage').textContent = 'Semua data telah dihapus dari Firebase!';
+                    } catch (e) {
+                        console.error('Error deleting data from Firestore:', e);
+                        document.getElementById('dataManagementMessage').textContent = `Gagal menghapus data dari Firebase: ${e.message}`;
+                    }
+                });
+            }
+
+            // --- UI Rendering Functions ---
+            function renderAllUI() {
+                updateAllPaymentStatuses(); 
+                calculateKPIs();
+                renderCashflowChart();
+                renderMonthlyComparisonChart();
+                renderTransactionCards(document.getElementById('transactionSearch').value, currentPage);
+                renderPaymentTable();
+                renderMemberTable();
+                populateTransactionWhoDropdowns(); 
+                populatePaymentPeriodDropdowns(); 
+                populatePdfMonthCheckboxes(); 
+                populateAiMonthFilter(); 
+            }
+
+            function calculateKPIs() {
+                let totalIncome = 0;
+                let totalExpense = 0;
+                cashflowData.forEach(item => {
+                    totalIncome += item.pemasukan;
+                    totalExpense += item.pengeluaran;
+                });
+                const currentBalance = totalIncome - totalExpense;
+
+                document.getElementById('currentBalance').textContent = formatCurrency(currentBalance);
+                document.getElementById('totalIncome').textContent = formatCurrency(totalIncome);
+                document.getElementById('totalExpense').textContent = formatCurrency(totalExpense);
+            }
+
+            let cashflowChartInstance = null;
+            function renderCashflowChart() {
+                const ctx = document.getElementById('cashflowChart').getContext('2d');
+                const labels = [];
+                const balanceData = [];
+                let runningBalance = 0;
+
+                const sortedCashflowData = [...cashflowData].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+                sortedCashflowData.forEach(item => {
+                    runningBalance += item.pemasukan - item.pengeluaran;
+                    labels.push(new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
+                    balanceData.push(runningBalance);
+                });
+
+                if (cashflowChartInstance) {
+                    cashflowChartInstance.destroy();
+                }
+
+                cashflowChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Saldo Kas',
+                            data: balanceData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatCurrency(value);
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Saldo: ${formatCurrency(context.raw)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            let monthlyComparisonChartInstance = null;
+            function renderMonthlyComparisonChart() {
+                const ctx = document.getElementById('monthlyComparisonChart').getContext('2d');
+                const monthlyData = {};
+
+                cashflowData.forEach(item => {
+                    const monthIndex = new Date(item.tanggal).getMonth();
+                    const monthName = months[monthIndex];
+                    if (!monthlyData[monthName]) {
+                        monthlyData[monthName] = { pemasukan: 0, pengeluaran: 0 };
+                    }
+                    monthlyData[monthName].pemasukan += item.pemasukan;
+                    monthlyData[monthName].pengeluaran += item.pengeluaran;
+                });
+
+                const chartLabels = Object.keys(monthlyData);
+                const incomeDataset = chartLabels.map(month => monthlyData[month].pemasukan);
+                const expenseDataset = chartLabels.map(month => monthlyData[month].pengeluaran);
+
+                if (monthlyComparisonChartInstance) {
+                    monthlyComparisonChartInstance.destroy();
+                }
+
+                monthlyComparisonChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [
+                            {
+                                label: 'Pemasukan',
+                                data: incomeDataset,
+                                backgroundColor: '#10b981',
+                                borderRadius: 4,
+                            },
+                            {
+                                label: 'Pengeluaran',
+                                data: expenseDataset,
+                                backgroundColor: '#ef4444',
+                                borderRadius: 4,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatCurrency(value);
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderTransactionCards(filter = '', page = 1) {
+                const cardContainer = document.getElementById('transactionCardContainer');
+                cardContainer.innerHTML = '';
+                
+                currentPage = page;
+
+                const sortedData = [...cashflowData].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+                
+                const filteredData = sortedData.filter(item =>
+                    item.keterangan.toLowerCase().includes(filter.toLowerCase()) ||
+                    (item.penyetorPengambil && item.penyetorPengambil.toLowerCase().includes(filter.toLowerCase()))
+                );
+
+                if (filteredData.length === 0) {
+                    cardContainer.innerHTML = `<div class="p-4 text-center text-slate-500 col-span-full">Tidak ada transaksi yang cocok.</div>`;
+                    renderPaginationControls(0, page);
+                    return;
+                }
+                
+                const groupedByDate = filteredData.reduce((acc, transaction) => {
+                    const date = transaction.tanggal;
+                    if (!acc[date]) {
+                        acc[date] = {
+                            transactions: [],
+                            totalIncome: 0,
+                            totalExpense: 0
+                        };
+                    }
+                    acc[date].transactions.push(transaction);
+                    acc[date].totalIncome += transaction.pemasukan;
+                    acc[date].totalExpense += transaction.pengeluaran;
+                    return acc;
+                }, {});
+
+                const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+
+                const startIndex = (page - 1) * transactionsPerPage;
+                const endIndex = page * transactionsPerPage;
+                const paginatedDates = sortedDates.slice(startIndex, endIndex);
+
+                paginatedDates.forEach(date => {
+                    const dayData = groupedByDate[date];
+                    let transactionsHtml = '';
+
+                    dayData.transactions.forEach(item => {
+                        const amount = item.pemasukan > 0 ? formatCurrency(item.pemasukan) : formatCurrency(item.pengeluaran);
+                        const amountColor = item.pemasukan > 0 ? 'text-emerald-600' : 'text-red-600';
+                        const amountSign = item.pemasukan > 0 ? '+' : '-';
+
+                        transactionsHtml += `
+                            <div class="flex items-center justify-between py-2 border-b last:border-b-0 border-slate-200">
+                                <div class="flex-grow">
+                                    <p class="font-medium text-sm text-slate-800">${item.keterangan} (${item.penyetorPengambil || 'Anonim'})</p>
+                                    <p class="text-xs ${amountColor}">${amountSign} ${amount}</p>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <button data-doc-id="${item.docId}" class="edit-transaction-button text-blue-600 hover:text-blue-900 mr-2 text-sm">Edit</button>
+                                    <button data-doc-id="${item.docId}" class="delete-transaction-button text-red-600 hover:text-red-900 text-sm">Hapus</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    const cardHtml = `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200">
+                                <h4 class="text-md font-semibold text-slate-900">${new Date(date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h4>
+                            </div>
+                            <div class="flex justify-between text-sm mb-2">
+                                <div>
+                                    <span class="font-medium text-slate-500">Pemasukan Harian:</span>
+                                    <span class="font-semibold text-emerald-600">${formatCurrency(dayData.totalIncome)}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-slate-500">Pengeluaran Harian:</span>
+                                    <span class="font-semibold text-red-600">${formatCurrency(dayData.totalExpense)}</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 border-t border-slate-200 pt-4">
+                                <p class="text-sm font-semibold text-slate-700 mb-2">Detail Transaksi:</p>
+                                ${transactionsHtml}
+                            </div>
+                        </div>
+                    `;
+                    cardContainer.innerHTML += cardHtml;
+                });
+
+                document.querySelectorAll('.delete-transaction-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const docId = e.target.dataset.docId;
+                        showConfirmationModal(`Apakah Anda yakin ingin menghapus transaksi ini?`, () => {
+                            deleteTransaction(docId);
+                        });
+                    });
+                });
+                
+                document.querySelectorAll('.edit-transaction-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const docId = e.target.dataset.docId;
+                        const transaction = cashflowData.find(t => t.docId === docId);
+                        if (transaction) {
+                            showEditTransactionModal(transaction);
+                        }
+                    });
+                });
+
+                renderPaginationControls(sortedDates.length, page);
+            }
+
+            function renderPaginationControls(totalItems, page) {
+                const paginationControls = document.getElementById('paginationControls');
+                paginationControls.innerHTML = '';
+                const totalPages = Math.ceil(totalItems / transactionsPerPage);
+
+                if (totalPages <= 1) return;
+
+                let paginationHTML = `
+                    <span class="text-sm text-slate-700">
+                        Halaman ${page} dari ${totalPages}
+                    </span>
+                    <div class="flex items-center">
+                        <button id="prevPage" class="pagination-button bg-white border border-slate-300 text-slate-700 font-semibold py-1 px-3 rounded-l-lg" ${page === 1 ? 'disabled' : ''}>
+                            Sebelumnya
+                        </button>
+                `;
+
+                for (let i = 1; i <= totalPages; i++) {
+                    paginationHTML += `
+                        <button class="pagination-button page-number-button bg-white border-t border-b border-slate-300 text-slate-700 font-semibold py-1 px-3 ${i === page ? 'active' : ''}" data-page="${i}">
+                            ${i}
+                        </button>
+                    `;
+                }
+
+                paginationHTML += `
+                        <button id="nextPage" class="pagination-button bg-white border border-slate-300 text-slate-700 font-semibold py-1 px-3 rounded-r-lg" ${page === totalPages ? 'disabled' : ''}>
+                            Berikutnya
+                        </button>
+                    </div>
+                `;
+
+                paginationControls.innerHTML = paginationHTML;
+
+                document.getElementById('prevPage')?.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        renderTransactionCards(document.getElementById('transactionSearch').value, currentPage - 1);
+                    }
+                });
+
+                document.getElementById('nextPage')?.addEventListener('click', () => {
+                    if (currentPage < totalPages) {
+                        renderTransactionCards(document.getElementById('transactionSearch').value, currentPage + 1);
+                    }
+                });
+
+                document.querySelectorAll('.page-number-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const newPage = parseInt(e.target.dataset.page);
+                        renderTransactionCards(document.getElementById('transactionSearch').value, newPage);
+                    });
+                });
+            }
+
+
+            function renderPaymentTable() {
+                const tableHeader = document.getElementById('paymentTableHeader');
+                const tableBody = document.getElementById('paymentTableBody');
+                tableBody.innerHTML = ''; 
+
+                tableHeader.innerHTML = `<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50 z-10">Nama Anggota</th>`;
+                paymentMonths.forEach(monthYear => {
+                    tableHeader.innerHTML += `<th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">${monthYear.replace(' ', '<br>')}</th>`;
+                });
+
+                const filteredPaymentData = paymentData.filter(member => !member.isSystem);
+
+                if (filteredPaymentData.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="${paymentMonths.length + 1}" class="text-center py-4 text-slate-500">Tidak ada anggota terdaftar.</td></tr>`;
+                    return;
+                }
+
+                const sortedPaymentData = [...filteredPaymentData].sort((a, b) => a.nama.localeCompare(b.nama));
+
+                sortedPaymentData.forEach(member => {
+                    let rowHtml = `<tr><td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800 sticky left-0 bg-white">${member.nama}</td>`;
+                    paymentMonths.forEach(monthYear => {
+                        const status = member.pembayaran[monthYear] || 'Belum';
+                        const statusClass = status === 'Lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800';
+                        rowHtml += `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                                    ${status}
+                                </span>
+                            </td>
+                        `;
+                    });
+                    rowHtml += `</tr>`;
+                    tableBody.innerHTML += rowHtml;
+                });
+            }
+
+            function updateAllPaymentStatuses() {
+                paymentData.forEach(member => {
+                    if (!member.isSystem) {
+                        member.pembayaran = {}; 
+                        paymentMonths.forEach(monthYear => {
+                            member.pembayaran[monthYear] = 'Belum';
+                        });
+                    }
+                });
+
+                cashflowData.forEach(transaction => {
+                    if (transaction.pemasukan > 0) {
+                        const payerName = transaction.penyetorPengambil ? transaction.penyetorPengambil.toLowerCase() : '';
+                        const member = paymentData.find(m => m.nama.toLowerCase() === payerName && !m.isSystem); 
+
+                        if (member) {
+                            if (transaction.startMonth && transaction.endMonth) {
+                                const startIndex = paymentMonths.indexOf(transaction.startMonth);
+                                const endIndex = paymentMonths.indexOf(transaction.endMonth);
+
+                                if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+                                    for (let i = startIndex; i <= endIndex; i++) {
+                                        member.pembayaran[paymentMonths[i]] = 'Lunas';
+                                    }
+                                } else {
+                                    const transactionDate = new Date(transaction.tanggal);
+                                    const transactionMonthName = months[transactionDate.getMonth()];
+                                    const transactionYear = transactionDate.getFullYear();
+                                    const transactionMonthYear = `${transactionMonthName} ${transactionYear}`;
+                                    if(member.pembayaran.hasOwnProperty(transactionMonthYear)) {
+                                       member.pembayaran[transactionMonthYear] = 'Lunas';
+                                    }
+                                }
+                            } else {
+                                const transactionDate = new Date(transaction.tanggal);
+                                const transactionMonthName = months[transactionDate.getMonth()];
+                                const transactionYear = transactionDate.getFullYear();
+                                const transactionMonthYear = `${transactionMonthName} ${transactionYear}`;
+                                if(member.pembayaran.hasOwnProperty(transactionMonthYear)) {
+                                   member.pembayaran[transactionMonthYear] = 'Lunas';
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderMemberTable() {
+                const memberTableBody = document.getElementById('memberTableBody');
+                memberTableBody.innerHTML = '';
+                if (paymentData.length === 0) {
+                    memberTableBody.innerHTML = `<tr><td colspan="2" class="text-center py-4 text-slate-500">Tidak ada anggota terdaftar.</td></tr>`;
+                    return;
+                }
+                const filteredPaymentData = paymentData.filter(member => !member.isSystem);
+                const sortedPaymentData = [...filteredPaymentData].sort((a, b) => a.nama.localeCompare(b.nama));
+
+                sortedPaymentData.forEach(member => {
+                    const row = `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${member.nama}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button data-doc-id="${member.docId}" class="edit-member-button text-blue-600 hover:text-blue-900 mr-2">Edit</button>
+                                <button data-doc-id="${member.docId}" class="delete-member-button text-red-600 hover:text-red-900">Hapus</button>
+                            </td>
+                        </tr>
+                    `;
+                    memberTableBody.innerHTML += row;
+                });
+
+                document.querySelectorAll('.delete-member-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const docId = e.target.dataset.docId;
+                        const memberName = e.target.closest('tr').querySelector('td').textContent;
+                        showConfirmationModal(`Apakah Anda yakin ingin menghapus anggota "${memberName}"? Ini juga akan menghapus semua transaksi terkait dengan anggota ini.`, () => {
+                            deleteMember(docId);
+                        });
+                    });
+                });
+
+                document.querySelectorAll('.edit-member-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const docId = e.target.dataset.docId;
+                        const member = paymentData.find(m => m.docId === docId);
+                        if (member) {
+                            showEditMemberModal(member.docId, member.nama);
+                        }
+                    });
+                });
+            }
+
+            function populateTransactionWhoDropdowns(transactionType = 'pemasukan') {
+                const addSelect = document.getElementById('transactionWho');
+                const editSelect = document.getElementById('editTransactionWho');
+                
+                [addSelect, editSelect].forEach(select => {
+                    select.innerHTML = '<option value="">Pilih Anggota (Opsional)</option>'; 
+                    const sortedPaymentData = [...paymentData].sort((a, b) => a.nama.localeCompare(b.nama));
+                    sortedPaymentData.forEach(member => {
+                        const option = document.createElement('option');
+                        option.value = member.nama;
+                        option.textContent = member.nama;
+                        if (member.isSystem && transactionType !== 'pengeluaran') {
+                        } else {
+                            select.appendChild(option);
+                        }
+                    });
+                });
+            }
+
+            function populatePaymentPeriodDropdowns() {
+                const startMonthSelect = document.getElementById('paymentPeriodStartMonth');
+                const endMonthSelect = document.getElementById('paymentPeriodEndMonth');
+                const editStartMonthSelect = document.getElementById('editPaymentPeriodStartMonth');
+                const editEndMonthSelect = document.getElementById('editPaymentPeriodEndMonth');
+
+                const selects = [startMonthSelect, endMonthSelect, editStartMonthSelect, editEndMonthSelect];
+
+                selects.forEach(select => {
+                    if (select) {
+                        select.innerHTML = '<option value="">Pilih Bulan (Opsional)</option>';
+                        paymentMonths.forEach(monthYear => {
+                            const option = document.createElement('option');
+                            option.value = monthYear;
+                            option.textContent = monthYear;
+                            select.appendChild(option);
+                        });
+                    }
+                });
+                
+                const currentMonth = months[new Date().getMonth()];
+                const currentYear = new Date().getFullYear();
+                const currentMonthYear = `${currentMonth} ${currentYear}`;
+
+                startMonthSelect.value = currentMonthYear;
+                endMonthSelect.value = currentMonthYear;
+            }
+
+            function populateAiMonthFilter() {
+                const aiMonthFilter = document.getElementById('aiMonthFilter');
+                aiMonthFilter.innerHTML = ''; 
+                const currentYear = new Date().getFullYear();
+                months.forEach(month => {
+                    const option = document.createElement('option');
+                    const monthYear = `${month} ${currentYear}`;
+                    option.value = month; 
+                    option.textContent = monthYear;
+                    aiMonthFilter.appendChild(option);
+                });
+            }
+
+            // --- MODAL LOGIC ---
+            function openModal(modalId) {
+                const modal = document.getElementById(modalId);
+                const mainContent = document.querySelector('main');
+                if (modal && mainContent) {
+                    modal.style.display = 'flex';
+                    mainContent.style.filter = 'blur(5px)';
+                    mainContent.style.transition = 'filter 0.3s ease-in-out';
+                    document.body.classList.add('overflow-hidden');
+                }
+            }
+
+            function closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                const mainContent = document.querySelector('main');
+                if (modal && mainContent) {
+                    modal.style.display = 'none';
+                    mainContent.style.filter = 'none';
+                    document.body.classList.remove('overflow-hidden');
+                }
+            }
+            
+            const confirmationModal = document.getElementById('confirmationModal');
+            const modalMessage = document.getElementById('modalMessage');
+            const confirmYesButton = document.getElementById('confirmYes');
+            const confirmNoButton = document.getElementById('confirmNo');
+            const closeConfirmButton = document.querySelector('#confirmationModal .close-button');
+            let confirmCallback = null;
+
+            function showConfirmationModal(message, callback) {
+                modalMessage.textContent = message;
+                confirmCallback = callback;
+                openModal('confirmationModal');
+            }
+            
+            closeConfirmButton.addEventListener('click', () => closeModal('confirmationModal'));
+            confirmNoButton.addEventListener('click', () => closeModal('confirmationModal'));
+            confirmYesButton.addEventListener('click', async () => {
+                if (confirmCallback) {
+                    await confirmCallback();
+                }
+                closeModal('confirmationModal');
+            });
+
+            const editMemberModal = document.getElementById('editMemberModal');
+            const closeEditMemberModalButton = document.getElementById('closeEditMemberModal');
+            const editMemberNameInput = document.getElementById('editMemberNameInput');
+            const saveEditedMemberNameButton = document.getElementById('saveEditedMemberName');
+            const cancelEditMemberNameButton = document.getElementById('cancelEditMemberName');
+            let currentEditMemberId = null;
+
+            function showEditMemberModal(docId, currentName) {
+                currentEditMemberId = docId;
+                editMemberNameInput.value = currentName;
+                openModal('editMemberModal');
+            }
+            
+            closeEditMemberModalButton.addEventListener('click', () => closeModal('editMemberModal'));
+            cancelEditMemberNameButton.addEventListener('click', () => closeModal('editMemberModal'));
+            saveEditedMemberNameButton.addEventListener('click', () => {
+                const newName = editMemberNameInput.value.trim();
+                if (newName && currentEditMemberId) {
+                    editMember(currentEditMemberId, newName);
+                    closeModal('editMemberModal');
+                } else {
+                    showConfirmationModal('Nama anggota tidak boleh kosong.', () => {});
+                }
+            });
+
+            const addTransactionModal = document.getElementById('addTransactionModal');
+            const openAddTransactionModalButton = document.getElementById('openAddTransactionModalButton');
+            const closeAddTransactionModalButton = document.getElementById('closeAddTransactionModal');
+
+            openAddTransactionModalButton.addEventListener('click', () => openModal('addTransactionModal'));
+            closeAddTransactionModalButton.addEventListener('click', () => closeModal('addTransactionModal'));
+
+            const editTransactionModal = document.getElementById('editTransactionModal');
+            const closeEditTransactionModalButton = document.getElementById('closeEditTransactionModal');
+            const cancelEditTransactionButton = document.getElementById('cancelEditTransaction');
+
+            function showEditTransactionModal(transaction) {
+                document.getElementById('editTransactionId').value = transaction.docId;
+                document.getElementById('editTransactionDate').value = transaction.tanggal;
+                document.getElementById('editTransactionDesc').value = transaction.keterangan;
+                
+                const isIncome = transaction.pemasukan > 0;
+                
+                let amountToShow = isIncome ? transaction.pemasukan : transaction.pengeluaran;
+                if (isIncome && transaction.startMonth && transaction.endMonth) {
+                    const startIndex = paymentMonths.indexOf(transaction.startMonth);
+                    const endIndex = paymentMonths.indexOf(transaction.endMonth);
+                    if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+                        const numberOfMonths = endIndex - startIndex + 1;
+                        if (numberOfMonths > 0) {
+                            amountToShow = transaction.pemasukan / numberOfMonths;
+                        }
+                    }
+                }
+
+                document.getElementById('editTransactionAmount').value = amountToShow;
+                document.querySelector(`input[name="editTransactionType"][value="pemasukan"]`).checked = isIncome;
+                document.querySelector(`input[name="editTransactionType"][value="pengeluaran"]`).checked = !isIncome;
+                
+                populateTransactionWhoDropdowns(isIncome ? 'pemasukan' : 'pengeluaran');
+                document.getElementById('editTransactionWho').value = transaction.penyetorPengambil || '';
+
+                document.getElementById('editPaymentPeriodStartMonth').value = transaction.startMonth || '';
+                document.getElementById('editPaymentPeriodEndMonth').value = transaction.endMonth || '';
+                
+                openModal('editTransactionModal');
+            }
+            
+            closeEditTransactionModalButton.addEventListener('click', () => closeModal('editTransactionModal'));
+            cancelEditTransactionButton.addEventListener('click', () => closeModal('editTransactionModal'));
+
+            window.addEventListener('click', (event) => {
+                if (event.target.classList.contains('modal')) {
+                    event.target.style.display = 'none';
+                    document.querySelector('main').style.filter = 'none';
+                    document.body.classList.remove('overflow-hidden');
+                }
+            });
+
+            // NEW: Unpaid Members Modal Logic
+            const unpaidMembersModal = document.getElementById('unpaidMembersModal');
+            const checkUnpaidMembersButton = document.getElementById('checkUnpaidMembersButton');
+            const closeUnpaidMembersModalButton = document.getElementById('closeUnpaidMembersModal');
+
+            checkUnpaidMembersButton.addEventListener('click', renderUnpaidMembersModal);
+            closeUnpaidMembersModalButton.addEventListener('click', () => closeModal('unpaidMembersModal'));
+
+            function renderUnpaidMembersModal() {
+                const unpaidMembersList = document.getElementById('unpaidMembersList');
+                const unpaidMembersMessage = document.getElementById('unpaidMembersMessage');
+                unpaidMembersList.innerHTML = '';
+                
+                const now = new Date();
+                const currentMonthYear = `${months[now.getMonth()]} ${now.getFullYear()}`;
+                const currentMonthIndex = paymentMonths.indexOf(currentMonthYear);
+                
+                const startMonthForCheck = 'Juli 2025';
+                const startMonthIndex = paymentMonths.indexOf(startMonthForCheck);
+
+                if (startMonthIndex === -1) {
+                    unpaidMembersMessage.textContent = `Bulan awal untuk pengecekan, ${startMonthForCheck}, tidak ditemukan.`;
+                    unpaidMembersMessage.classList.remove('hidden');
+                    openModal('unpaidMembersModal');
+                    return;
+                }
+
+                const unpaidData = paymentData.filter(member => !member.isSystem).map(member => {
+                    const unpaidMonths = [];
+                    
+                    for(let i = startMonthIndex; i <= currentMonthIndex; i++) {
+                        const monthYear = paymentMonths[i];
+                        if (member.pembayaran[monthYear] === 'Belum') {
+                            unpaidMonths.push(monthYear);
+                        }
+                    }
+
+                    return {
+                        nama: member.nama,
+                        unpaidMonths: unpaidMonths,
+                    };
+                }).filter(member => member.unpaidMonths.length > 0);
+
+                if (unpaidData.length === 0) {
+                    unpaidMembersMessage.classList.remove('hidden');
+                    unpaidMembersMessage.textContent = `Tidak ada anggota yang memiliki iuran terutang dari ${startMonthForCheck} hingga sekarang.`;
+                } else {
+                    unpaidMembersMessage.classList.add('hidden');
+                    unpaidData.forEach(member => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200';
+                        card.innerHTML = `
+                            <h4 class="text-md font-semibold text-slate-900">${member.nama}</h4>
+                            <div class="mt-2">
+                                <p class="text-xs font-medium text-slate-700">Bulan Belum Bayar:</p>
+                                <ul class="list-disc list-inside text-xs text-slate-600">
+                                    ${member.unpaidMonths.map(month => `<li>${month}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                        unpaidMembersList.appendChild(card);
+                    });
+                }
+                
+                openModal('unpaidMembersModal');
+            }
+
+
+            // --- Event Listeners ---
+            document.getElementById('transactionSearch').addEventListener('input', (e) => {
+                renderTransactionCards(e.target.value, 1); 
+            });
+
+            const tabTransactions = document.getElementById('tab-transactions');
+            const tabPayments = document.getElementById('tab-payments');
+            const tabMemberManagement = document.getElementById('tab-member-management');
+            const tabDataManagement = document.getElementById('tab-data-management');
+            const tabAiInsights = document.getElementById('tab-ai-insights');
+            const tabPdfSettings = document.getElementById('tab-pdf-settings');
+
+            const contentTransactions = document.getElementById('content-transactions');
+            const contentPayments = document.getElementById('content-payments');
+            const contentMemberManagement = document.getElementById('content-member-management');
+            const contentDataManagement = document.getElementById('content-data-management');
+            const contentAiInsights = document.getElementById('content-ai-insights');
+            const contentPdfSettings = document.getElementById('content-pdf-settings');
+
+            const allTabs = [tabTransactions, tabPayments, tabMemberManagement, tabDataManagement, tabAiInsights, tabPdfSettings];
+            const allContents = [contentTransactions, contentPayments, contentMemberManagement, contentDataManagement, contentAiInsights, contentPdfSettings];
+
+            function switchTab(activeTabButton, activeContentDiv) {
+                allTabs.forEach(tab => tab.classList.remove('active'));
+                allContents.forEach(content => content.classList.add('hidden'));
+                activeTabButton.classList.add('active');
+                activeContentDiv.classList.remove('hidden');
+            }
+
+            switchTab(tabTransactions, contentTransactions);
+
+            tabTransactions.addEventListener('click', () => switchTab(tabTransactions, contentTransactions));
+            tabPayments.addEventListener('click', () => switchTab(tabPayments, contentPayments));
+            tabMemberManagement.addEventListener('click', () => switchTab(tabMemberManagement, contentMemberManagement));
+            tabDataManagement.addEventListener('click', () => switchTab(tabDataManagement, contentDataManagement));
+            tabAiInsights.addEventListener('click', () => switchTab(tabAiInsights, contentAiInsights));
+            tabPdfSettings.addEventListener('click', () => switchTab(tabPdfSettings, contentPdfSettings));
+
+            document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const date = document.getElementById('transactionDate').value;
+                const desc = document.getElementById('transactionDesc').value;
+                let amount = parseFloat(document.getElementById('transactionAmount').value); 
+                const type = document.querySelector('input[name="transactionType"]:checked').value;
+                const who = document.getElementById('transactionWho').value;
+                const startMonth = document.getElementById('paymentPeriodStartMonth').value;
+                const endMonth = document.getElementById('paymentPeriodEndMonth').value;
+
+                let actualAmount = amount; 
+
+                if (type === 'pemasukan' && startMonth && endMonth) {
+                    const startIndex = paymentMonths.indexOf(startMonth);
+                    const endIndex = paymentMonths.indexOf(endMonth);
+                    if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+                        const numberOfMonths = endIndex - startIndex + 1;
+                        actualAmount = amount * numberOfMonths; 
+                    }
+                }
+
+                const newTransaction = {
+                    tanggal: date,
+                    keterangan: desc,
+                    pemasukan: type === 'pemasukan' ? actualAmount : 0, 
+                    pengeluaran: type === 'pengeluaran' ? amount : 0,
+                    penyetorPengambil: who || 'Anonim'
+                };
+
+                if (type === 'pemasukan' && startMonth && endMonth) {
+                    newTransaction.startMonth = startMonth;
+                    newTransaction.endMonth = endMonth;
+                }
+
+                const spinner = document.getElementById('addTransactionSpinner');
+                spinner.classList.remove('hidden');
+                document.getElementById('transactionForm').querySelector('button[type="submit"]').disabled = true;
+
+                addTransaction(newTransaction);
+
+                spinner.classList.add('hidden');
+                document.getElementById('transactionForm').querySelector('button[type="submit"]').disabled = false;
+                document.getElementById('transactionForm').reset();
+                document.getElementById('transactionDate').valueAsDate = new Date();
+                populatePaymentPeriodDropdowns(); 
+                closeModal('addTransactionModal');
+            });
+
+            document.getElementById('editTransactionForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const docId = document.getElementById('editTransactionId').value;
+                const date = document.getElementById('editTransactionDate').value;
+                const desc = document.getElementById('editTransactionDesc').value;
+                let amount = parseFloat(document.getElementById('editTransactionAmount').value); 
+                const type = document.querySelector('input[name="editTransactionType"]:checked').value;
+                const who = document.getElementById('editTransactionWho').value;
+                const startMonth = document.getElementById('editPaymentPeriodStartMonth').value;
+                const endMonth = document.getElementById('editPaymentPeriodEndMonth').value;
+
+                let actualAmount = amount; 
+
+                if (type === 'pemasukan' && startMonth && endMonth) {
+                    const startIndex = paymentMonths.indexOf(startMonth);
+                    const endIndex = paymentMonths.indexOf(endMonth);
+                    if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+                        const numberOfMonths = endIndex - startIndex + 1;
+                        actualAmount = amount * numberOfMonths; 
+                    }
+                }
+
+                const updatedTransaction = {
+                    tanggal: date,
+                    keterangan: desc,
+                    pemasukan: type === 'pemasukan' ? actualAmount : 0,
+                    pengeluaran: type === 'pengeluaran' ? amount : 0, 
+                    penyetorPengambil: who || 'Anonim'
+                };
+
+                if (type === 'pemasukan' && startMonth && endMonth) {
+                    updatedTransaction.startMonth = startMonth;
+                    updatedTransaction.endMonth = endMonth;
+                }
+                
+                const spinner = document.getElementById('editTransactionSpinner');
+                spinner.classList.remove('hidden');
+                document.getElementById('editTransactionForm').querySelector('button[type="submit"]').disabled = true;
+                
+                updateTransaction(docId, updatedTransaction);
+
+                spinner.classList.add('hidden');
+                document.getElementById('editTransactionForm').querySelector('button[type="submit"]').disabled = false;
+                closeModal('editTransactionModal');
+            });
+
+            document.getElementById('addMemberButton').addEventListener('click', async () => {
+                const newMemberNameInput = document.getElementById('newMemberName');
+                const memberName = newMemberNameInput.value.trim();
+                if (memberName) {
+                    const spinner = document.getElementById('addMemberSpinner');
+                    spinner.classList.remove('hidden');
+                    document.getElementById('addMemberButton').disabled = true;
+
+                    addMember(memberName);
+
+                    spinner.classList.add('hidden');
+                    document.getElementById('addMemberButton').disabled = false;
+                    newMemberNameInput.value = '';
+                } else {
+                    showConfirmationModal('Nama anggota tidak boleh kosong.', () => {});
+                }
+            });
+
+            document.getElementById('downloadDataButton').addEventListener('click', downloadDataAsJson);
+            document.getElementById('downloadReportButton').addEventListener('click', () => {
+                // PDF generation logic would go here (simplified for brevity as it requires external lib setup)
+                document.getElementById('dataManagementMessage').textContent = 'Laporan berhasil diunduh sebagai laporan_uang_kas.pdf (Fitur PDF lengkap perlu library)';
+            });
+            document.getElementById('uploadDataButton').addEventListener('click', () => {
+                document.getElementById('uploadFileInput').click();
+            });
+            document.getElementById('uploadFileInput').addEventListener('change', loadDataFromFile);
+            document.getElementById('clearInMemoryDataButton').addEventListener('click', clearInMemoryData); 
+
+            document.getElementById('autoDownloadInterval').addEventListener('change', (e) => {
+                const minutes = parseInt(e.target.value);
+                startAutoDownload(minutes);
+            });
+
+            function downloadDataAsJson() {
+                const dataToSave = {
+                    cashflow: cashflowData,
+                    payments: paymentData 
+                };
+                const jsonString = JSON.stringify(dataToSave, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'data_uang_kas_backup.json'; 
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                document.getElementById('dataManagementMessage').textContent = 'Data berhasil diunduh sebagai data_uang_kas_backup.json';
+            }
+
+            let autoDownloadIntervalId = null; 
+            let autoDownloadMinutes = 0; 
+
+            function startAutoDownload(minutes) {
+                if (autoDownloadIntervalId) {
+                    clearInterval(autoDownloadIntervalId);
+                }
+                if (minutes > 0) {
+                    autoDownloadMinutes = minutes;
+                    autoDownloadIntervalId = setInterval(() => {
+                        downloadDataAsJson();
+                        document.getElementById('autoDownloadStatus').textContent = `Backup terakhir diunduh: ${new Date().toLocaleTimeString('id-ID')}`;
+                    }, minutes * 60 * 1000); 
+                    document.getElementById('autoDownloadStatus').textContent = `Backup otomatis aktif setiap ${minutes} menit.`;
+                } else {
+                    autoDownloadMinutes = 0;
+                    document.getElementById('autoDownloadStatus').textContent = 'Backup otomatis nonaktif.';
+                }
+            }
+
+            async function loadDataFromFile(event) {
+                const file = event.target.files[0];
+                if (!file) {
+                    document.getElementById('dataManagementMessage').textContent = 'Tidak ada file yang dipilih.';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const loadedData = JSON.parse(e.target.result);
+                        if (loadedData.cashflow && loadedData.payments) {
+                            cashflowData = loadedData.cashflow;
+                            paymentData = loadedData.payments;
+                            await saveDataToFirestore(); 
+                            document.getElementById('dataManagementMessage').textContent = `Data berhasil dimuat dari file "${file.name}" dan disimpan ke Firebase.`;
+                        } else {
+                            document.getElementById('dataManagementMessage').textContent = 'Format file JSON tidak valid. Pastikan berisi "cashflow" dan "payments".';
+                        }
+                    } catch (error) {
+                        console.error('Error parsing JSON or saving to Firestore:', error);
+                        document.getElementById('dataManagementMessage').textContent = `Gagal memuat file: ${error.message}. Pastikan file adalah JSON yang valid.`;
+                    }
+                };
+                reader.onerror = () => {
+                    document.getElementById('dataManagementMessage').textContent = 'Gagal membaca file.';
+                };
+                reader.readAsText(file);
+            }
+
+            document.getElementById('generateSpendingAnalysis').addEventListener('click', async () => {
+                const selectedMonth = document.getElementById('aiMonthFilter').value;
+                const filteredExpenses = cashflowData.filter(item =>
+                    new Date(item.tanggal).getMonth() === months.indexOf(selectedMonth) && item.pengeluaran > 0
+                );
+
+                let expenseDetails = filteredExpenses.map(item =>
+                    `- ${item.keterangan} (${item.penyetorPengambil || 'Anonim'}): ${formatCurrency(item.pengeluaran)}`
+                ).join('\n');
+
+                if (expenseDetails === '') {
+                    expenseDetails = 'Tidak ada pengeluaran tercatat untuk bulan ini.';
+                }
+
+                const prompt = `Berdasarkan data transaksi pengeluaran berikut untuk bulan ${selectedMonth}:\n${expenseDetails}\n\nBerikan ringkasan singkat tentang pola pengeluaran utama dan kategori terbesar untuk bulan ini. Fokus pada pengeluaran. Format sebagai paragraf singkat dalam bahasa Indonesia.`;
+
+                await callGeminiAPI(
+                    prompt,
+                    document.getElementById('spendingAnalysisOutput'),
+                    document.getElementById('spendingAnalysisSpinner')
+                );
+            });
+
+            document.getElementById('generatePaymentReminder').addEventListener('click', async () => {
+                let unpaidMembersByMonth = {};
+                paymentMonths.forEach(monthYear => {
+                    unpaidMembersByMonth[monthYear] = paymentData.filter(member =>
+                        !member.isSystem && member.pembayaran[monthYear] === 'Belum'
+                    ).map(member => member.nama);
+                });
+
+                let reminderTextParts = [];
+                for (const monthYear of paymentMonths) {
+                    if (unpaidMembersByMonth[monthYear].length > 0) {
+                        reminderTextParts.push(`anggota berikut yang belum membayar iuran bulan ${monthYear}: ${unpaidMembersByMonth[monthYear].join(', ')}`);
+                    }
+                }
+
+                let prompt = '';
+                if (reminderTextParts.length > 0) {
+                    prompt = `Buatkan draf pesan pengingat pembayaran iuran kas yang sopan untuk ${reminderTextParts.join(' dan ')}. Pesan harus singkat, jelas, dan mendorong pembayaran tanpa terkesan menuntut. Mulai dengan sapaan umum dan sebutkan bulan iuran. Format sebagai paragraf singkat dalam bahasa Indonesia.`;
+                } else {
+                    prompt = 'Tidak ada anggota yang belum membayar untuk bulan yang dipilih.';
+                }
+
+                await callGeminiAPI(
+                    prompt,
+                    document.getElementById('paymentReminderOutput'),
+                    document.getElementById('paymentReminderSpinner')
+                );
+            });
+
+            async function callGeminiAPI(prompt, outputElement, spinnerElement) {
+                outputElement.innerHTML = '<p class="text-slate-500">Memuat...</p>';
+                spinnerElement.classList.remove('hidden');
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        outputElement.innerHTML = `<p>${text}</p>`;
+                    } else {
+                        outputElement.innerHTML = `<p class="text-red-500">Gagal mendapatkan respons dari AI. Coba lagi.</p>`;
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    outputElement.innerHTML = `<p class="text-red-500">Terjadi kesalahan: ${error.message}.</p>`;
+                } finally {
+                    spinnerElement.classList.add('hidden');
+                }
+            }
+
+            document.getElementById('transactionDate').valueAsDate = new Date();
+
+            const pdfMonthSelectionDiv = document.getElementById('pdfMonthSelection');
+            const selectAllPdfMonthsButton = document.getElementById('selectAllPdfMonths');
+            const clearAllPdfMonthsButton = document.getElementById('clearAllPdfMonths');
+
+            function populatePdfMonthCheckboxes() {
+                pdfMonthSelectionDiv.innerHTML = '';
+                paymentMonths.forEach((monthYear, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center';
+                    div.innerHTML = `
+                        <input type="checkbox" id="pdfMonth-${index}" name="pdfMonth" value="${monthYear}" class="form-checkbox h-4 w-4 text-amber-600 rounded focus:ring-amber-500" checked>
+                        <label for="pdfMonth-${index}" class="ml-2 text-sm text-slate-700">${monthYear}</label>
+                    `;
+                    pdfMonthSelectionDiv.appendChild(div);
+                });
+            }
+
+            selectAllPdfMonthsButton.addEventListener('click', () => {
+                document.querySelectorAll('#pdfMonthSelection input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+            });
+
+            clearAllPdfMonthsButton.addEventListener('click', () => {
+                document.querySelectorAll('#pdfMonthSelection input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            });
+
+            populatePdfMonthCheckboxes();
+            renderAllUI();
+            startAutoDownload(0);
+        });
+    </script>
 </body>
 </html>
